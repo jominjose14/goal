@@ -1,2 +1,3 @@
-# shipwreck
-An online multiplayer battleships game
+# Goal
+
+An online multiplayer ice-hockey game
