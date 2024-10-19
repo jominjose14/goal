@@ -3,16 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Goal</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
-    <script src="index.js" defer></script>
+    <script src="index.js" type="module" defer></script>
 </head>
 <body>
     <div class="welcome">
         <h1>Goal</h1>
-        <button>Online</button>
-        <button>Local</button>
+        <button class="online-game-btn">Online</button>
+        <button class="local-game-btn">Local</button>
+        <div class="toggles">
+            <button class="mute-toggle-btn">
+                <img src="images/unmuted.svg" alt="Mute Toggle">
+            </button>
+            <button class="fullscreen-toggle-btn">
+                <img src="images/fullscreen.svg" alt="Fullscreen Toggle">
+            </button>
+        </div>
     </div>
+    <canvas height="1080px" width="1920px"></canvas>
 </body>
 </html>

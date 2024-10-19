@@ -13,25 +13,27 @@ body {
     background-size: 100vw 100vh;
     background-repeat: no-repeat;
     background-attachment: fixed;
-    font-family: "Roboto", sans-serif;
+    font-family: "Open Sans", sans-serif;
 }
 
 .welcome {
     display: flex;
     flex-direction: column;
     gap: 1vmin;
-    background-color: hsla(0, 0%, 20%, 0.9);
+    background-color: hsla(0, 0%, 20%, 0.95);
     font-size: 2.5vmin;
     align-content: center;
     border-radius: 1em;
-    padding: 2em;
+    padding: 2em 2.5em 2em;
+    border: 3px solid hsla(0, 0%, 100%, 0.1);
 
     h1 {
         all: unset;
         color: hsl(0, 0%, 100%, 1);
         font-size: 4em;
+        font-weight: 600;
         text-align: center;
-        margin-bottom: 3vmin;
+        margin-bottom: 3.5vmin;
     }
 
     button {
@@ -41,11 +43,48 @@ body {
         background-color: hsla(0, 0%, 100%, 0.05);
         font-size: 1em;
         text-align: center;
-        border-radius: 0.5em;
-        padding: 1em 5em;
+        border-radius: 0.45em;
+        padding: 0.75em 4em;
+        border: 1px solid hsla(0, 0%, 100%, 0.1);
 
         &:hover {
             background-color: hsla(0, 0%, 100%, 0.1);
         }
     }
+
+    .toggles {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 2vmin;
+        margin-top: 1em;
+
+        button {
+            all: unset;
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            height: 6vmin;
+            width: 6vmin;
+            background-color: hsla(0, 0%, 100%, 0.05);
+            border-radius: 0.45em;
+
+            img {
+                height : 70%;
+                width : 70%;
+                filter: invert(1);
+            }
+
+            &:hover {
+                background-color: hsla(0, 0%, 100%, 0.1);
+            }
+        }
+    }
+}
+
+canvas {
+    display: none;
+    height: 100%;
+    width: 81.2%;
+    background-color: transparent;
 }
