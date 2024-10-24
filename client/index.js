@@ -1,12 +1,13 @@
 "use strict";
 
 import {
+    $fpsDisplay,
     $pauseMenu,
     $settingsMenu,
     $welcomeMenu,
     audio,
-    fullscreenToggles,
-    muteToggles,
+    $fullscreenToggles, isDebugMode,
+    $muteToggles,
     state
 } from "./scripts/global.js";
 import Puck from "./scripts/Puck.js";
@@ -38,10 +39,20 @@ function main() {
     window.addEventListener("resize", onResize);
 
     resizeBoard();
+    if(isDebugMode) debugOps();
+}
+
+function debugOps() {
+    $fpsDisplay.style.display = "flex";
+
+    setInterval(() => {
+        $fpsDisplay.textContent = state.debugCanvasFpsCounter.toString();
+        state.debugCanvasFpsCounter = 0;
+    }, 1000);
 }
 
 function attachEventListeners() {
-    document.addEventListener("mousemove", playBgm);
+    // document.addEventListener("mousemove", playBgm);
 
     document.querySelectorAll("button").forEach(button => button.addEventListener("click", () => {
         audio.buttonPress.play();
@@ -50,11 +61,11 @@ function attachEventListeners() {
 
     document.querySelector(".offline-game-btn").onclick = startOfflineGame;
 
-    for(const muteToggle of muteToggles) {
+    for(const muteToggle of $muteToggles) {
         muteToggle.onclick = toggleMute;
     }
 
-    for(const fullscreenToggle of fullscreenToggles) {
+    for(const fullscreenToggle of $fullscreenToggles) {
         fullscreenToggle.onclick = toggleFullscreen;
     }
 
@@ -89,8 +100,8 @@ function playBgm() {
 }
 
 function toggleMute() {
-    for(const muteToggle of muteToggles) {
-        const $img = muteToggle.querySelector("img");
+    for(const $muteToggle of $muteToggles) {
+        const $img = $muteToggle.querySelector("img");
 
         if($img.src.includes("unmuted")) {
             $img.src = $img.src.replace("unmuted.svg", "muted.svg");
@@ -105,8 +116,8 @@ function toggleMute() {
 }
 
 function toggleFullscreen() {
-    for(const fullscreenToggle of fullscreenToggles) {
-        const $img = fullscreenToggle.querySelector("img");
+    for(const $fullscreenToggle of $fullscreenToggles) {
+        const $img = $fullscreenToggle.querySelector("img");
 
         if(!document.fullscreenElement) {
             $img.src = $img.src.replace("fullscreen.svg", "windowed.svg");

@@ -3,7 +3,12 @@ import {
     boardRinkFractionX,
     boardRinkFractionY,
     audio,
-    state
+    state,
+    xPuckMaxVelDividend,
+    yPuckMaxVelDividend,
+    puckMinVel,
+    puckCollisionEscapeMultiplier,
+    puckRadiusFraction,
 } from "./global.js";
 import {clamp, handleGoal} from "./functions.js";
 
@@ -15,8 +20,6 @@ export default class Puck {
     #radius;
     #color;
     #friction = 0.999;
-    #minVel = 1; // measured in px/frame
-    #radiusRatio = 0.015; // TODO: make this ratio editable in settings
 
     constructor(xVel, yVel, radius, color) {
         this.xVel = xVel;
@@ -46,27 +49,35 @@ export default class Puck {
     }
 
     set xPos(xPos) {
-        if(isNaN(xPos) || typeof xPos !== "number") return;
-        this.#xPos = clamp(-$canvas.width, xPos, $canvas.width);
+        if(isNaN(xPos)) return;
+        this.#xPos = clamp(-$canvas.width - 2*this.#radius, xPos, $canvas.width + 2*this.#radius);
     }
 
     set yPos(yPos) {
-        if(isNaN(yPos) || typeof yPos !== "number") return;
-        this.#yPos = clamp(-$canvas.height, yPos, $canvas.height);
+        if(isNaN(yPos)) return;
+        this.#yPos = clamp(-$canvas.height - 2*this.#radius, yPos, $canvas.height + 2*this.#radius);
     }
 
     set xVel(xVel) {
-        if(isNaN(xVel) || typeof xVel !== "number") return;
-        this.#xVel = clamp(-$canvas.width, xVel, $canvas.width);
+        if(isNaN(xVel)) return;
+        if(Math.abs(xVel) < puckMinVel) xVel = Math.sign(xVel) * puckMinVel;
+        this.#xVel = clamp(-$canvas.width/xPuckMaxVelDividend, xVel, $canvas.width/xPuckMaxVelDividend);
     }
 
     set yVel(yVel) {
-        if(isNaN(yVel) || typeof yVel !== "number") return;
-        this.#yVel = clamp(-$canvas.height, yVel, $canvas.height);
+        if(isNaN(yVel)) return;
+        if(Math.abs(yVel) < puckMinVel) yVel = Math.sign(yVel) * puckMinVel;
+        this.#yVel = clamp(-$canvas.height/yPuckMaxVelDividend, yVel, $canvas.height/yPuckMaxVelDividend);
     }
 
     resetRadius() {
-        this.#radius = this.#radiusRatio * $canvas.width;
+        this.#radius = puckRadiusFraction * $canvas.width;
+    }
+
+    adaptToScreen() {
+        this.xPos = $canvas.width * this.xPos / state.prevCanvasWidth;
+        this.yPos = $canvas.height * this.yPos / state.prevCanvasHeight;
+        this.resetRadius();
     }
 
     reset() {
@@ -89,14 +100,14 @@ export default class Puck {
 
     update() {
         // Slow down the puck using friction
-        this.xVel = Math.sign(this.xVel) * Math.max(this.#minVel, (Math.abs(this.xVel) * this.#friction));
-        this.yVel = Math.sign(this.yVel) * Math.max(this.#minVel, (Math.abs(this.yVel) * this.#friction));
+        this.xVel *= this.#friction;
+        this.yVel *= this.#friction;
 
         if(!state.isGoal) this.reactToCollisions();
 
         // Update position using velocity
-        this.xPos = this.#xPos + this.xVel;
-        this.yPos = this.#yPos + this.yVel;
+        this.xPos += this.xVel;
+        this.yPos += this.yVel;
 
         this.draw();
     }
@@ -111,8 +122,8 @@ export default class Puck {
         const xBoardBoundEnd = $canvas.width * (1 - boardRinkFractionX) - this.#radius;
         const yBoardBoundStart = boardRinkFractionY * $canvas.height + this.#radius;
         const yBoardBoundEnd = $canvas.height * (1 - boardRinkFractionY) - this.#radius;
-        const yGoalStart = (320/900) * $canvas.height + 2 * this.#radius;
-        const yGoalEnd = (580/900) * $canvas.height - 2 * this.#radius;
+        const yGoalStart = (320/900) * $canvas.height + 2.25 * this.#radius;
+        const yGoalEnd = (580/900) * $canvas.height - 2.25 * this.#radius;
 
         // handle goal
         if((this.xPos < xBoardBoundStart || xBoardBoundEnd < this.xPos) && yGoalStart < this.yPos && this.yPos < yGoalEnd || isNaN(this.xPos)) {
@@ -122,12 +133,12 @@ export default class Puck {
 
         // Handle collision with board's rink
         let didBoardCollisionOccur = false;
-        if(this.#xPos <= xBoardBoundStart || xBoardBoundEnd <= this.#xPos) {
-            this.#xVel *= -1;
+        if(this.xPos <= xBoardBoundStart || xBoardBoundEnd <= this.xPos) {
+            this.xVel *= -1;
             didBoardCollisionOccur = true;
         }
-        if(this.#yPos <= yBoardBoundStart || yBoardBoundEnd <= this.#yPos) {
-            this.#yVel *= -1;
+        if(this.yPos <= yBoardBoundStart || yBoardBoundEnd <= this.yPos) {
+            this.yVel *= -1;
             didBoardCollisionOccur = true;
         }
         if(didBoardCollisionOccur) {
@@ -136,10 +147,10 @@ export default class Puck {
         }
 
         // Handle edge case: if puck is stuck within rink area, reset its position
-        if(this.#xPos < xBoardBoundStart) this.#xPos = xBoardBoundStart + 1;
-        if(xBoardBoundEnd < this.#xPos) this.#xPos = xBoardBoundEnd - 1;
-        if(this.#yPos < yBoardBoundStart) this.#yPos = yBoardBoundStart + 1;
-        if(yBoardBoundEnd < this.#yPos) this.#yPos = yBoardBoundEnd - 1;
+        if(this.xPos < xBoardBoundStart) this.xPos = xBoardBoundStart + 1;
+        if(xBoardBoundEnd < this.xPos) this.xPos = xBoardBoundEnd - 1;
+        if(this.yPos < yBoardBoundStart) this.yPos = yBoardBoundStart + 1;
+        if(yBoardBoundEnd < this.yPos) this.yPos = yBoardBoundEnd - 1;
     }
 
     handlePlayerCollisions() {
@@ -168,8 +179,8 @@ export default class Puck {
             }
 
             // Move puck out of collision range
-            this.xPos += player.xVel * 5;
-            this.yPos += player.yVel * 5;
+            this.xPos += player.xVel * puckCollisionEscapeMultiplier;
+            this.yPos += player.yVel * puckCollisionEscapeMultiplier;
         }
 
         if(didPlayerCollisionOccur) {

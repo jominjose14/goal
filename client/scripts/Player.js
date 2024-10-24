@@ -1,4 +1,11 @@
-import {$canvas, boardRinkFractionX, boardRinkFractionY, state} from "./global.js";
+import {
+    $canvas, aiPlayerAccel,
+    boardRinkFractionX,
+    boardRinkFractionY,
+    mainPlayerVelMultiplier,
+    playerRadiusFraction,
+    state
+} from "./global.js";
 import {clamp} from "./functions.js";
 
 export default class Player {
@@ -11,8 +18,6 @@ export default class Player {
     #timestamp = null;
     #xVel = 0;
     #yVel = 0;
-    #stabilizingFactor = 2.5;
-    #radiusRatio = 0.0225; // TODO: make this ratio editable in settings
 
     constructor(color, team, type) {
         this.#color = color;
@@ -44,7 +49,7 @@ export default class Player {
     }
 
     set xPos(xPos) {
-        if(isNaN(xPos) || typeof xPos !== "number") return;
+        if(isNaN(xPos)) return;
 
         if(this.#team === "left") {
             const xBoardBoundStart = boardRinkFractionX * $canvas.width + this.#radius;
@@ -58,7 +63,7 @@ export default class Player {
     }
 
     set yPos(yPos) {
-        if(isNaN(yPos) || typeof yPos !== "number") return;
+        if(isNaN(yPos)) return;
 
         const yBoardBoundStart = boardRinkFractionY * $canvas.height + this.#radius;
         const yBoardBoundEnd = $canvas.height * (1 - boardRinkFractionY) - this.#radius;
@@ -66,22 +71,23 @@ export default class Player {
     }
 
     set xVel(xVel) {
-        if(isNaN(xVel) || typeof xVel !== "number") return;
+        if(isNaN(xVel)) return;
         this.#xVel = clamp(-$canvas.width, xVel, $canvas.width);
     }
 
     set yVel(yVel) {
-        if(isNaN(yVel) || typeof yVel !== "number") return;
+        if(isNaN(yVel)) return;
         this.#yVel = clamp(-$canvas.height, yVel, $canvas.height);
     }
 
     resetRadius() {
-        this.#radius = this.#radiusRatio * $canvas.width;
+        this.#radius = playerRadiusFraction * $canvas.width;
     }
 
-    // for debugging
-    logPos() {
-        console.log(this.#xPos, this.#yPos);
+    adaptToScreen() {
+        this.xPos = $canvas.width * this.xPos / state.prevCanvasWidth;
+        this.yPos = $canvas.height * this.yPos / state.prevCanvasHeight;
+        this.resetRadius();
     }
 
     reset() {
@@ -118,17 +124,17 @@ export default class Player {
         const y = clamp(yBoardBoundStart, mouseMoveEvent.offsetY, yBoardBoundEnd);
 
         if(this.#timestamp == null) {
-            this.#timestamp = Date.now();
+            this.#timestamp = window.performance.now();
             this.xPos = x;
             this.yPos = y;
         }
 
-        const now = Date.now();
+        const now = window.performance.now();
         const dt = Math.max(1, now - this.#timestamp); // max op to prevent zero division
         const dx = x - this.xPos;
         const dy = y - this.yPos;
-        this.xVel = this.#stabilizingFactor * dx / dt;
-        this.yVel = this.#stabilizingFactor * dy / dt;
+        this.xVel = mainPlayerVelMultiplier * dx / dt;
+        this.yVel = mainPlayerVelMultiplier * dy / dt;
 
         this.#timestamp = Date.now();
         this.xPos = x;
@@ -158,57 +164,64 @@ export default class Player {
     }
 
     easyAiUpdate() {
-        if(this.#team === "right" && state.puck.xPos < $canvas.width/2 || this.#team === "left" && $canvas.width/2 < state.puck.xPos) {
-            this.xVel = 0;
-            this.yVel = 0;
-            return;
-        }
+        if(this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2) {
+            this.xVel += aiPlayerAccel;
 
-        const accel = 0.05; // measured in pixels/(frames)^2
-
-        if(this.xPos < state.puck.xPos) {
-            this.xVel = Math.max(0, this.xVel) + accel;
-            if(this.yPos < state.puck.yPos) {
-                this.yVel = this.yVel + (this.yPos < state.puck.yPos - 4 * this.#radius ? 1 : -1) * accel;
+            if(this.yPos + this.radius === $canvas.height/2) {
+                this.yVel = 0;
+            } else if(this.yPos + this.radius < $canvas.height/2) {
+                this.yVel += aiPlayerAccel;
             } else {
-                this.yVel = this.yVel + (this.yPos < state.puck.yPos + 4 * this.#radius ? 1 : -1) * accel;
+                this.yVel -= aiPlayerAccel;
+            }
+        } else if(this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius) {
+            this.xVel -= aiPlayerAccel;
+
+            if(this.yPos + this.radius === $canvas.height/2) {
+                this.yVel = 0;
+            } else if(this.yPos + this.radius < $canvas.height/2) {
+                this.yVel += aiPlayerAccel;
+            } else {
+                this.yVel -= aiPlayerAccel;
             }
         } else {
-            this.xVel = Math.min(this.xVel, 0) - accel;
-            this.yVel = Math.min(this.yVel, 0) - accel;
+            if((state.puck.xPos + state.puck.radius) < this.xPos) {
+                this.xVel -= aiPlayerAccel;
+            } else {
+                this.xVel += aiPlayerAccel;
+            }
+
+            if((state.puck.yPos + state.puck.radius) < this.yPos) {
+                this.yVel -= aiPlayerAccel;
+            } else {
+                this.yVel += aiPlayerAccel;
+            }
         }
 
-        this.xPos = this.xPos + this.xVel;
-        this.yPos = this.yPos + this.yVel;
+        this.xPos += this.xVel;
+        this.yPos += this.yVel;
     }
 
     mediumAiUpdate() {
-        if(this.#team === "right" && state.puck.xPos < $canvas.width/2 || this.#team === "left" && $canvas.width/2 < state.puck.xPos) {
+        if(this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2 || this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius) {
             this.xVel = 0;
             this.yVel = 0;
             return;
         }
 
-        const accel = 0.1; // measured in pixels/(frames)^2
-        const xPuckDirection = Math.sign(state.puck.xVel);
-        const yPuckDirection = Math.sign(state.puck.yVel);
+        const yPosDiff = this.yPos - state.puck.yPos;
+        if(Math.abs(yPosDiff) < this.radius + state.puck.radius) {
+            this.yVel = 0;
+        } else {
+            this.yVel += -Math.sign(yPosDiff) * aiPlayerAccel;
+        }
 
-        if(Math.sign(this.#xVel) !== xPuckDirection) this.#xVel = 0;
-        if(Math.sign(this.#yVel) !== yPuckDirection) this.#yVel = 0;
-        this.xVel = this.#xVel + xPuckDirection * accel;
-        this.yVel = this.#yVel + yPuckDirection * accel;
-
-        this.xPos = this.#xPos + this.#xVel;
-        this.yPos = this.#yPos + this.#yVel;
+        this.xPos = this.#team === "right" ? 0.9 * $canvas.width : 0.1 * $canvas.width;
+        this.yPos += this.yVel;
     }
 
     hardAiUpdate() {
         if(state.isGoal) return;
-
-        // SOLVED: using clamp in setter; Edge case: when puck goes off-screen, puck.xPos becomes NaN
-        // if(isNaN(state.puck.xPos)) {
-        //     return;
-        // }
 
         const target = $canvas;
         const offsetX = 0.9 * $canvas.width;

@@ -1,5 +1,5 @@
 import {rotate} from "./functions";
-import {audio, state} from "./global";
+import {$canvas, aiPlayerAccel, audio, state} from "./global";
 
 // Copy of collision logic from Reddit (tried, did not work)
 function redditCollisionLogic(dx, dy, player) {
@@ -46,7 +46,7 @@ function redditCollisionLogic(dx, dy, player) {
     this.yVel = finalPuckVel.y;
 }
 
-function oldHybridLogic() {
+function oldHybridCollisionLogic() {
     let didPlayerCollisionOccur = false;
 
     for(const player of state.allPlayers) {
@@ -108,4 +108,34 @@ function movePuckOutOfCollisionRangeUsingAngle(player, dx, dy, distance) {
     const angle = Math.atan2(dy, dx);
     this.xPos += player.xVel * overlap * Math.cos(angle);
     this.yPos += player.yVel * overlap * Math.sin(angle);
+}
+
+function accelBasedLineDefenseAi() {
+    if(this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2 || this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius) {
+        this.xVel = 0;
+        this.yVel = 0;
+        return;
+    }
+
+    // if(Math.random() <= 0.5) {
+    //     this.xVel += ((Math.random() < 0.5) ? -1 : 1) * aiPlayerAccel;
+    // } else {
+    //     const xPosDiff = this.xPos - (this.#team === "right" ? 0.9 * $canvas.width : 0.1 * $canvas.width);
+    //     if(Math.abs(xPosDiff) < 2*this.radius) {
+    //         this.xVel = 0;
+    //     } else {
+    //         this.xVel += -Math.sign(xPosDiff) * aiPlayerAccel;
+    //     }
+    // }
+
+    const yPosDiff = this.yPos - state.puck.yPos;
+    if(Math.abs(yPosDiff) < this.radius + state.puck.radius) {
+        this.yVel = 0;
+    } else {
+        this.yVel += -Math.sign(yPosDiff) * aiPlayerAccel;
+    }
+
+    this.xPos = this.#team === "right" ? 0.9 * $canvas.width : 0.1 * $canvas.width;
+    // this.xPos += this.xVel;
+    this.yPos += this.yVel;
 }

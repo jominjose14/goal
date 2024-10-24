@@ -1,8 +1,31 @@
 import Player from "./Player.js";
-import {$canvas, $pauseMenu, boardRinkFractionX, audio, state} from "./global.js";
+import {
+    $canvas,
+    $pauseMenu,
+    boardRinkFractionX,
+    audio,
+    state,
+    millisecondsBetweenFrames,
+    isDebugMode
+} from "./global.js";
 
 // game logic
+function startRefreshingCanvas() {
+    state.prevFrameTimestamp = window.performance.now();
+    refreshCanvas();
+}
+
 function refreshCanvas() {
+    if (!state.isGameOver) requestAnimationFrame(refreshCanvas);
+
+    const now = window.performance.now();
+    const timeElapsedSincePrevFrame = now - state.prevFrameTimestamp;
+    if(timeElapsedSincePrevFrame < millisecondsBetweenFrames) return; // skip frame
+
+    // if we reach here, we are rendering a new frame
+    state.prevFrameTimestamp = now - timeElapsedSincePrevFrame % millisecondsBetweenFrames; // the modulo op is an adjustment in case millisecondsBetweenFrames is not a multiple of screen's built-in millisecondsBetweenFrames (for 60Hz it is 1000/60 = 16.7ms)
+
+    // frame render logic
     state.context.clearRect(0, 0, $canvas.width, $canvas.height);
     state.puck.update();
 
@@ -10,17 +33,19 @@ function refreshCanvas() {
         player.update();
     }
 
-    debugging();
-    if (!state.isGameOver) requestAnimationFrame(refreshCanvas);
+    if(isDebugMode) {
+        state.debugCanvasFpsCounter++;
+        debugOpsPerRefresh();
+    }
 }
 
-function debugging() {
-    // drawForDebugging();
-    assertsForDebugging();
-    logForDebugging();
+function debugOpsPerRefresh() {
+    // drawForDebug();
+    // assertsForDebug();
+    logForDebug();
 }
 
-function drawForDebugging() {
+function drawForDebug() {
     const ctx = state.context;
     // drawing puck at endpoints of goal posts
     const color = "hsla(0, 0%, 100%, 1)";
@@ -50,12 +75,15 @@ function drawForDebugging() {
     ctx.closePath();
 }
 
-function assertsForDebugging() {
-    if(state.puck.yPos === undefined) throw new Error("Puck's y position is undefined");
+function assertsForDebug() {
+    if(isNaN(state.puck.xPos)) throw new Error("puck.xPos is NaN");
+    if(state.puck.yPos === undefined) throw new Error("puck.yPos is undefined");
 }
 
-function logForDebugging() {
-    console.log(`state.isGoal = ${state.isGoal}, state.isGameOver = ${state.isGameOver}, puck.x = ${state.puck.xPos}, puck.y = ${state.puck.yPos}, puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel}, ai.x = ${state.nonMainPlayers[0].xPos}, ai.y = ${state.nonMainPlayers[0].yPos}, ai.xVel = ${state.nonMainPlayers[0].xVel}, ai.yVel = ${state.nonMainPlayers[0].yVel}`);
+function logForDebug() {
+    // console.log(`state.isGoal = ${state.isGoal}, state.isGameOver = ${state.isGameOver}, puck.x = ${state.puck.xPos}, puck.y = ${state.puck.yPos}, puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel}, ai.x = ${state.nonMainPlayers[0].xPos}, ai.y = ${state.nonMainPlayers[0].yPos}, ai.xVel = ${state.nonMainPlayers[0].xVel}, ai.yVel = ${state.nonMainPlayers[0].yVel}`);
+    console.log(`puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel},\nmain.xVel = ${state.mainPlayer.xVel}, main.yVel = ${state.mainPlayer.yVel},\nai.xVel = ${state.nonMainPlayers[0].xVel}, ai.yVel = ${state.nonMainPlayers[0].yVel}`);
+    // console.log(`puck.xPos = ${state.puck.xPos}, puck.yPos = ${state.puck.yPos},\nmain.xPos = ${state.mainPlayer.xPos}, main.yPos = ${state.mainPlayer.yPos},\nai.xPos = ${state.nonMainPlayers[0].xPos}, ai.yPos = ${state.nonMainPlayers[0].yPos}`);
 }
 
 export function startOfflineGame() {
@@ -81,7 +109,7 @@ export function newRound() {
 
     state.isGameOver = false;
     state.isGoal = false;
-    requestAnimationFrame(refreshCanvas);
+    startRefreshingCanvas();
 }
 
 export function handleGoal() {
@@ -108,7 +136,7 @@ export function handleGoal() {
         $leftScore.classList.add("strobing-score");
     }
 
-    setTimeout(newRound, 2000);
+    setTimeout(newRound, 2000); // give the puck time to cross goal's width
 }
 
 export function resizeBoard() {
@@ -134,11 +162,15 @@ export function resizeBoard() {
     // Refresh context
     state.context = $canvas.getContext('2d');
 
-    // Reset radii for puck and players
-    state.puck.resetRadius();
+    // Adapt puck and players
+    state.puck.adaptToScreen();
     for (const player of state.allPlayers) {
-        player.resetRadius();
+        player.adaptToScreen();
     }
+
+    // Update prev canvas dimensions
+    state.prevCanvasWidth = $canvas.width;
+    state.prevCanvasHeight = $canvas.height;
 }
 
 // event handlers
@@ -161,7 +193,7 @@ export function onResume(event) {
     closeModal(event.target);
     state.isGameOver = false;
     $pauseMenu.style.display = "none";
-    requestAnimationFrame(refreshCanvas);
+    startRefreshingCanvas();
 }
 
 export function onMouseMove(event) {
