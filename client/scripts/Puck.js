@@ -8,7 +8,7 @@ import {
     yPuckMaxVelDividend,
     puckMinVel,
     puckCollisionEscapeMultiplier,
-    puckRadiusFraction,
+    puckRadiusFraction, puckStuckMaxDuration,
 } from "./global.js";
 import {clamp, handleGoal} from "./functions.js";
 
@@ -75,8 +75,8 @@ export default class Puck {
     }
 
     adaptToScreen() {
-        this.xPos = $canvas.width * this.xPos / state.prevCanvasWidth;
-        this.yPos = $canvas.height * this.yPos / state.prevCanvasHeight;
+        this.xPos = $canvas.width * this.xPos / state.prevCanvasDim.width;
+        this.yPos = $canvas.height * this.yPos / state.prevCanvasDim.height;
         this.resetRadius();
     }
 
@@ -109,6 +109,11 @@ export default class Puck {
         this.xPos += this.xVel;
         this.yPos += this.yVel;
 
+        if(puckStuckMaxDuration <= state.stuckPuckMetrics.duration) {
+            this.reset();
+            state.stuckPuckMetrics.duration = 0;
+        }
+
         this.draw();
     }
 
@@ -122,8 +127,8 @@ export default class Puck {
         const xBoardBoundEnd = $canvas.width * (1 - boardRinkFractionX) - this.#radius;
         const yBoardBoundStart = boardRinkFractionY * $canvas.height + this.#radius;
         const yBoardBoundEnd = $canvas.height * (1 - boardRinkFractionY) - this.#radius;
-        const yGoalStart = (320/900) * $canvas.height + 2.25 * this.#radius;
-        const yGoalEnd = (580/900) * $canvas.height - 2.25 * this.#radius;
+        const yGoalStart = (320/900) * $canvas.height + 2 * this.#radius;
+        const yGoalEnd = (580/900) * $canvas.height - 2 * this.#radius;
 
         // handle goal
         if((this.xPos < xBoardBoundStart || xBoardBoundEnd < this.xPos) && yGoalStart < this.yPos && this.yPos < yGoalEnd || isNaN(this.xPos)) {
@@ -165,7 +170,6 @@ export default class Puck {
 
             didPlayerCollisionOccur = true;
 
-            // Update velocities
             if(Math.sign(this.xVel) === Math.sign(player.xVel)) {
                 this.xVel = Math.max(this.xVel, player.xVel);
             } else {

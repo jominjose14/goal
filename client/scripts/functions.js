@@ -6,24 +6,30 @@ import {
     audio,
     state,
     millisecondsBetweenFrames,
-    isDebugMode
+    isDebugMode, $welcomeMenu, $message, $scores, $rightScore, $leftScore
 } from "./global.js";
 
 // game logic
 function startRefreshingCanvas() {
-    state.prevFrameTimestamp = window.performance.now();
+    state.stuckPuckMetrics.interval = setInterval(updateStuckPuckMetrics, 1000);
+    state.fpsMetrics.prevFrameTimestamp = window.performance.now();
     refreshCanvas();
 }
 
 function refreshCanvas() {
-    if (!state.isGameOver) requestAnimationFrame(refreshCanvas);
+    if (!state.isGameOver && !state.isPaused) requestAnimationFrame(refreshCanvas);
+
+    if(state.isGoal || state.isPaused || state.isGameOver) {
+        clearInterval(state.stuckPuckMetrics.interval);
+        state.stuckPuckMetrics.interval = null;
+    }
 
     const now = window.performance.now();
-    const timeElapsedSincePrevFrame = now - state.prevFrameTimestamp;
+    const timeElapsedSincePrevFrame = now - state.fpsMetrics.prevFrameTimestamp;
     if(timeElapsedSincePrevFrame < millisecondsBetweenFrames) return; // skip frame
 
     // if we reach here, we are rendering a new frame
-    state.prevFrameTimestamp = now - timeElapsedSincePrevFrame % millisecondsBetweenFrames; // the modulo op is an adjustment in case millisecondsBetweenFrames is not a multiple of screen's built-in millisecondsBetweenFrames (for 60Hz it is 1000/60 = 16.7ms)
+    state.fpsMetrics.prevFrameTimestamp = now - timeElapsedSincePrevFrame % millisecondsBetweenFrames; // the modulo op is an adjustment in case millisecondsBetweenFrames is not a multiple of screen's built-in millisecondsBetweenFrames (for 60Hz it is 1000/60 = 16.7ms)
 
     // frame render logic
     state.context.clearRect(0, 0, $canvas.width, $canvas.height);
@@ -33,8 +39,10 @@ function refreshCanvas() {
         player.update();
     }
 
+    redrawVerticalRinkLines();
+
     if(isDebugMode) {
-        state.debugCanvasFpsCounter++;
+        state.fpsMetrics.canvasFpsCounter++;
         debugOpsPerRefresh();
     }
 }
@@ -82,16 +90,17 @@ function assertsForDebug() {
 
 function logForDebug() {
     // console.log(`state.isGoal = ${state.isGoal}, state.isGameOver = ${state.isGameOver}, puck.x = ${state.puck.xPos}, puck.y = ${state.puck.yPos}, puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel}, ai.x = ${state.nonMainPlayers[0].xPos}, ai.y = ${state.nonMainPlayers[0].yPos}, ai.xVel = ${state.nonMainPlayers[0].xVel}, ai.yVel = ${state.nonMainPlayers[0].yVel}`);
-    console.log(`puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel},\nmain.xVel = ${state.mainPlayer.xVel}, main.yVel = ${state.mainPlayer.yVel},\nai.xVel = ${state.nonMainPlayers[0].xVel}, ai.yVel = ${state.nonMainPlayers[0].yVel}`);
-    // console.log(`puck.xPos = ${state.puck.xPos}, puck.yPos = ${state.puck.yPos},\nmain.xPos = ${state.mainPlayer.xPos}, main.yPos = ${state.mainPlayer.yPos},\nai.xPos = ${state.nonMainPlayers[0].xPos}, ai.yPos = ${state.nonMainPlayers[0].yPos}`);
+    // console.log(`puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel},\nmain.xVel = ${state.mainPlayer.xVel}, main.yVel = ${state.mainPlayer.yVel},\nai.xVel = ${state.nonMainPlayers[0].xVel}, ai.yVel = ${state.nonMainPlayers[0].yVel}`);
+    console.log(`$canvas.width = ${$canvas.width}\npuck.xPos = ${state.puck.xPos}, puck.yPos = ${state.puck.yPos},\nmain.xPos = ${state.mainPlayer.xPos}, main.yPos = ${state.mainPlayer.yPos},\nai.xPos = ${state.nonMainPlayers[0].xPos}, ai.yPos = ${state.nonMainPlayers[0].yPos}\nstate.stuckPuckMetrics = ${JSON.stringify(state.stuckPuckMetrics, null, 2)}`);
 }
 
 export function startOfflineGame() {
-    document.querySelector(".welcome").style.display = "none";
-    document.getElementById("board").style.display = "block";
-    document.querySelector(".message").style.display = "flex";
-    document.querySelector(".scores").style.display = "flex";
-    document.addEventListener("keypress", onPause);
+    $welcomeMenu.classList.add("hidden");
+    $canvas.classList.remove("hidden");
+    $message.classList.remove("hidden");
+    $scores.classList.remove("hidden");
+    document.addEventListener("keypress", event => onPauseUsingKeyPress(event));
+    document.addEventListener("dblclick", onPauseUsingDoubleClick);
 
     const aiPlayer = new Player("hsla(120, 100%, 50%, 1)", "right", "ai");
     aiPlayer.reset();
@@ -120,7 +129,6 @@ export function handleGoal() {
 
     if (state.puck.xPos < $canvas.width / 2) {
         // right team scores
-        const $rightScore = document.getElementById("right-score");
         const currScore = $rightScore.textContent;
         $rightScore.textContent = (parseInt(currScore) + 1).toString();
         $rightScore.classList.remove("strobing-score");
@@ -128,7 +136,6 @@ export function handleGoal() {
         $rightScore.classList.add("strobing-score");
     } else {
         // left team scores
-        const $leftScore = document.getElementById("left-score");
         const currScore = $leftScore.textContent;
         $leftScore.textContent = (parseInt(currScore) + 1).toString();
         $leftScore.classList.remove("strobing-score");
@@ -136,7 +143,46 @@ export function handleGoal() {
         $leftScore.classList.add("strobing-score");
     }
 
-    setTimeout(newRound, 2000); // give the puck time to cross goal's width
+    setTimeout(newRound, 2000); // give the puck time to cross goal post's width
+}
+
+function updateStuckPuckMetrics() {
+    const isPuckOnLeftSide = state.puck.xPos < $canvas.width/2;
+    const isPuckOnCentralLine = state.puck.xPos === $canvas.width/2;
+
+    if(isPuckOnCentralLine || state.stuckPuckMetrics.wasPuckOnLeftSide !== isPuckOnLeftSide) {
+        state.stuckPuckMetrics.duration = 0;
+    } else {
+        state.stuckPuckMetrics.duration++;
+    }
+
+    state.stuckPuckMetrics.wasPuckOnLeftSide = isPuckOnLeftSide;
+}
+
+// this prevents puck from appearing above vertical rink lines as it passes into goal when coming in at a steep angle
+function redrawVerticalRinkLines() {
+    const rinkRadius = (60/900) * $canvas.height;
+    const ctx = state.context;
+
+    ctx.beginPath();
+
+    ctx.moveTo((5/1600) * $canvas.width,rinkRadius + (5/900) * $canvas.height);
+    ctx.lineTo((5/1600) * $canvas.width,(319/900) * $canvas.height - rinkRadius);
+
+    ctx.moveTo((5/1600) * $canvas.width,rinkRadius + (581/900) * $canvas.height);
+    ctx.lineTo((5/1600) * $canvas.width,(895/900) * $canvas.height - rinkRadius);
+
+    ctx.moveTo((1595/1600) * $canvas.width,rinkRadius + (5/900) * $canvas.height);
+    ctx.lineTo((1595/1600) * $canvas.width,(319/900) * $canvas.height - rinkRadius);
+
+    ctx.moveTo((1595/1600) * $canvas.width,rinkRadius + (581/900) * $canvas.height);
+    ctx.lineTo((1595/1600) * $canvas.width,(895/900) * $canvas.height - rinkRadius);
+
+    ctx.lineWidth = (11/1600) * $canvas.width;
+    ctx.strokeStyle = "hsla(0, 0%, 30%, 1)";
+    ctx.stroke();
+
+    ctx.closePath();
 }
 
 export function resizeBoard() {
@@ -169,30 +215,45 @@ export function resizeBoard() {
     }
 
     // Update prev canvas dimensions
-    state.prevCanvasWidth = $canvas.width;
-    state.prevCanvasHeight = $canvas.height;
+    state.prevCanvasDim.width = $canvas.width;
+    state.prevCanvasDim.height = $canvas.height;
 }
 
 // event handlers
-export function closeModal($btn) {
-    $btn.closest("dialog").close();
+export function closeModal($element) {
+    $element.closest("dialog").close();
 }
 
-export function onPause(event) {
+export function onPauseUsingKeyPress(event) {
     if (event.key !== "p" && event.key !== "P") return;
 
+    if(state.isPaused) {
+        onResume({target: $pauseMenu});
+    } else {
+        audio.buttonPress.play();
+        audio.buttonPress.currentTime = 0;
+
+        state.isPaused = true;
+        $pauseMenu.classList.remove("hidden");
+        $pauseMenu.showModal();
+        $pauseMenu.blur();
+    }
+}
+
+export function onPauseUsingDoubleClick() {
     audio.buttonPress.play();
     audio.buttonPress.currentTime = 0;
 
-    state.isGameOver = true;
-    $pauseMenu.style.display = "flex";
+    state.isPaused = true;
+    $pauseMenu.classList.remove("hidden");
     $pauseMenu.showModal();
+    $pauseMenu.blur();
 }
 
 export function onResume(event) {
     closeModal(event.target);
-    state.isGameOver = false;
-    $pauseMenu.style.display = "none";
+    $pauseMenu.classList.add("hidden");
+    state.isPaused = false;
     startRefreshingCanvas();
 }
 
@@ -200,7 +261,6 @@ export function onMouseMove(event) {
     requestAnimationFrame(() => state.mainPlayer.updatePosUsingMouse(event));
 }
 
-// TODO: fix bug: game freezes / reaches invalid state when fullscreen toggled using F11 key
 export function onResize() {
     requestAnimationFrame(resizeBoard);
 }
@@ -208,11 +268,4 @@ export function onResize() {
 // utility
 export function clamp(low, value, high) {
     return Math.max(low, Math.min(value, high));
-}
-
-export function rotate(x, y, sin, cos, reverse) {
-    return {
-        x: (reverse) ? (x * cos + y * sin) : (x * cos - y * sin),
-        y: (reverse) ? (y * cos - x * sin) : (y * cos + x * sin)
-    };
 }

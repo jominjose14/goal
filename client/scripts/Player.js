@@ -85,8 +85,8 @@ export default class Player {
     }
 
     adaptToScreen() {
-        this.xPos = $canvas.width * this.xPos / state.prevCanvasWidth;
-        this.yPos = $canvas.height * this.yPos / state.prevCanvasHeight;
+        this.xPos = $canvas.width * this.xPos / state.prevCanvasDim.width;
+        this.yPos = $canvas.height * this.yPos / state.prevCanvasDim.height;
         this.resetRadius();
     }
 
@@ -95,9 +95,9 @@ export default class Player {
 
         // TODO: adjust reset positions of all players based on total player count
         if(this.#team === "left") {
-            this.xPos = 0.1 * $canvas.width;
+            this.xPos = 0.075 * $canvas.width;
         } else {
-            this.xPos = 0.9 * $canvas.width;
+            this.xPos = 0.925 * $canvas.width;
         }
         this.yPos = $canvas.height / 2;
 
@@ -164,6 +164,29 @@ export default class Player {
     }
 
     easyAiUpdate() {
+        if(this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2 || this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius) {
+            this.xVel = 0;
+            this.yVel = 0;
+            return;
+        }
+
+        if(this.#team === "right" && -1 < Math.sign(state.puck.xVel) || this.#team === "left" && Math.sign(state.puck.xVel) < 1) {
+            const yPosDiff = this.yPos - state.puck.yPos;
+            if(Math.abs(yPosDiff) < this.radius + state.puck.radius) {
+                this.yVel = 0;
+            } else {
+                this.yVel += -Math.sign(yPosDiff) * aiPlayerAccel; // move towards puck
+            }
+        } else {
+            const yPosDiff = this.yPos - state.puck.yPos;
+            this.yVel += Math.sign(yPosDiff) * 3 * aiPlayerAccel; // move away from puck (allow it to go towards opposite side)
+        }
+
+        this.xPos = this.#team === "right" ? 0.9 * $canvas.width : 0.1 * $canvas.width;
+        this.yPos += this.yVel;
+    }
+
+    mediumAiUpdate() {
         if(this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2) {
             this.xVel += aiPlayerAccel;
 
@@ -185,6 +208,10 @@ export default class Player {
                 this.yVel -= aiPlayerAccel;
             }
         } else {
+            if(this.#team === "right" && this.xPos < state.puck.xPos || this.#team === "left" && state.puck.xPos < this.xPos) {
+                this.reset();
+            }
+
             if((state.puck.xPos + state.puck.radius) < this.xPos) {
                 this.xVel -= aiPlayerAccel;
             } else {
@@ -199,24 +226,6 @@ export default class Player {
         }
 
         this.xPos += this.xVel;
-        this.yPos += this.yVel;
-    }
-
-    mediumAiUpdate() {
-        if(this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2 || this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius) {
-            this.xVel = 0;
-            this.yVel = 0;
-            return;
-        }
-
-        const yPosDiff = this.yPos - state.puck.yPos;
-        if(Math.abs(yPosDiff) < this.radius + state.puck.radius) {
-            this.yVel = 0;
-        } else {
-            this.yVel += -Math.sign(yPosDiff) * aiPlayerAccel;
-        }
-
-        this.xPos = this.#team === "right" ? 0.9 * $canvas.width : 0.1 * $canvas.width;
         this.yPos += this.yVel;
     }
 

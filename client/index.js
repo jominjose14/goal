@@ -8,14 +8,14 @@ import {
     audio,
     $fullscreenToggles, isDebugMode,
     $muteToggles,
-    state
+    state, $canvas, $message, $scores, $leftScore, $rightScore, $rotateScreenPopup
 } from "./scripts/global.js";
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {
     closeModal,
-    onMouseMove,
-    onPause,
+    onMouseMove, onPauseUsingDoubleClick,
+    onPauseUsingKeyPress,
     onResize,
     onResume,
     resizeBoard,
@@ -27,9 +27,9 @@ main();
 
 // Function definitions
 function main() {
+    onChangeOrientation();
     attachEventListeners();
 
-    document.querySelector(".menu.welcome").style.display = "flex";
     document.getElementById("difficulty-selector").textContent = state.difficulty;
 
     state.mainPlayer = new Player("hsla(190, 100%, 50%, 1)", "left", "main");
@@ -43,15 +43,17 @@ function main() {
 }
 
 function debugOps() {
-    $fpsDisplay.style.display = "flex";
+    $fpsDisplay.classList.remove("hidden");
 
     setInterval(() => {
-        $fpsDisplay.textContent = state.debugCanvasFpsCounter.toString();
-        state.debugCanvasFpsCounter = 0;
+        $fpsDisplay.textContent = state.fpsMetrics.canvasFpsCounter.toString();
+        state.fpsMetrics.canvasFpsCounter = 0;
     }, 1000);
 }
 
 function attachEventListeners() {
+    window.screen.orientation.addEventListener("change", onChangeOrientation);
+
     // document.addEventListener("mousemove", playBgm);
 
     document.querySelectorAll("button").forEach(button => button.addEventListener("click", () => {
@@ -59,7 +61,7 @@ function attachEventListeners() {
         audio.buttonPress.currentTime = 0;
     }));
 
-    document.querySelector(".offline-game-btn").onclick = startOfflineGame;
+    document.querySelector(".menu.welcome .offline-game-btn").onclick = startOfflineGame;
 
     for(const muteToggle of $muteToggles) {
         muteToggle.onclick = toggleMute;
@@ -89,8 +91,8 @@ function attachEventListeners() {
         });
     }
 
-    document.querySelector(".menu.pause .resume-btn").onclick = onResume;
-    document.querySelector(".menu.pause .exit-btn").onclick = (event) => backToHomeScreen(event.target);
+    $pauseMenu.querySelector(".resume-btn").onclick = onResume;
+    $pauseMenu.querySelector(".exit-btn").onclick = (event) => backToHomeScreen(event.target);
 }
 
 function playBgm() {
@@ -134,14 +136,14 @@ function toggleFullscreen() {
 }
 
 function openSettings() {
-    $welcomeMenu.style.display = "none";
-    $settingsMenu.style.display = "flex";
+    $welcomeMenu.classList.add("hidden");
+    $settingsMenu.classList.remove("hidden");
 }
 
 function handleBack($element) {
     const $parent = $element.parentNode;
-    $parent.style.display = "none";
-    $welcomeMenu.style.display = "flex";
+    $parent.classList.add("hidden");
+    $welcomeMenu.classList.remove("hidden");
 }
 
 function handleSelectorClick($element) {
@@ -153,6 +155,17 @@ function handleSelectorClick($element) {
             $element.textContent = values[(i+1) % values.length];
             break;
         }
+    }
+}
+
+function onChangeOrientation() {
+    if(window.innerWidth < window.innerHeight) {
+        $rotateScreenPopup.classList.remove("hidden");
+        $rotateScreenPopup.showModal();
+        $rotateScreenPopup.blur();
+    } else {
+        $rotateScreenPopup.classList.add("hidden");
+        closeModal($rotateScreenPopup);
     }
 }
 
@@ -170,16 +183,20 @@ function onChangeTheme() {
 
 function backToHomeScreen($element) {
     closeModal($element);
+
     state.isGameOver = true;
     state.allPlayers = [state.mainPlayer];
     state.nonMainPlayers = [];
-    document.getElementById("board").style.display = "none";
-    $pauseMenu.style.display = "none";
-    document.querySelector(".message").style.display = "none";
-    document.querySelector(".scores").style.display = "none";
-    document.querySelector(".welcome").style.display = "flex";
-    document.removeEventListener("keypress", onPause);
 
-    document.getElementById("left-score").textContent = "0";
-    document.getElementById("right-score").textContent = "0";
+    $canvas.classList.add("hidden");
+    $pauseMenu.classList.add("hidden");
+    $message.classList.add("hidden");
+    $scores.classList.add("hidden");
+    $welcomeMenu.classList.remove("hidden");
+
+    document.removeEventListener("keypress", onPauseUsingKeyPress);
+    document.removeEventListener("dblclick", onPauseUsingDoubleClick);
+
+    $leftScore.textContent = "0";
+    $rightScore.textContent = "0";
 }

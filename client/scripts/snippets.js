@@ -1,5 +1,11 @@
-import {rotate} from "./functions";
-import {$canvas, aiPlayerAccel, audio, state} from "./global";
+import {$canvas, aiPlayerAccel, audio, boardRinkFractionY, state} from "./global";
+
+function rotate(x, y, sin, cos, reverse) {
+    return {
+        x: (reverse) ? (x * cos + y * sin) : (x * cos - y * sin),
+        y: (reverse) ? (y * cos - x * sin) : (y * cos + x * sin)
+    };
+}
 
 // Copy of collision logic from Reddit (tried, did not work)
 function redditCollisionLogic(dx, dy, player) {
@@ -97,6 +103,27 @@ function oldHybridCollisionLogic() {
     }
 }
 
+function handleXAndYCasesTogetherCollisionLogic() {
+    const xPuckVelDir = Math.sign(this.xVel);
+    const yPuckVelDir = Math.sign(this.yVel);
+    const xPlayerVelDir = Math.sign(player.xVel);
+    const yPlayerVelDir = Math.sign(player.yVel);
+
+    if(xPuckVelDir === xPlayerVelDir && yPuckVelDir === yPlayerVelDir) {
+        this.xVel = Math.max(this.xVel, player.xVel);
+        this.yVel = Math.max(this.yVel, player.yVel);
+    } else if(xPuckVelDir !== xPlayerVelDir && yPuckVelDir === yPlayerVelDir) {
+        this.xVel = -this.xVel + player.xVel;
+        this.yVel = -this.yVel
+    } else if(xPuckVelDir === xPlayerVelDir && yPuckVelDir !== yPlayerVelDir) {
+        this.xVel = -this.xVel;
+        this.yVel = -this.yVel + player.yVel;
+    } else { // xPuckVelDir !== xPlayerVelDir && yPuckVelDir !== yPlayerVelDir
+        this.xVel = -this.xVel + player.xVel;
+        this.yVel = -this.yVel + player.yVel;
+    }
+}
+
 function unitVector(dx, dy ,distance) {
     // Unit vector <xCap, yCap> along line of collision
     const xCap = dx/distance;
@@ -138,4 +165,21 @@ function accelBasedLineDefenseAi() {
     this.xPos = this.#team === "right" ? 0.9 * $canvas.width : 0.1 * $canvas.width;
     // this.xPos += this.xVel;
     this.yPos += this.yVel;
+}
+
+function circularDefenseAiLogic() {
+    const yPosDiff = this.yPos - state.puck.yPos;
+    if(Math.abs(yPosDiff) < this.radius + state.puck.radius) {
+        this.yVel = 0;
+    } else {
+        this.yVel += -Math.sign(yPosDiff) * aiPlayerAccel;
+    }
+
+    this.yPos += this.yVel;
+
+    // find xPos on circular defensive path
+    const xCenter = $canvas.width;
+    const yCenter = $canvas.height/2;
+    const radius = Math.min(0.35 * $canvas.width/2, $canvas.height * (0.5 - 2*boardRinkFractionY));
+    this.xPos = -Math.sqrt((radius + this.yPos - yCenter) * (radius - this.yPos + yCenter)) + xCenter;
 }

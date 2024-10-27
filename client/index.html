@@ -34,7 +34,7 @@
         </div>
     </div>
 
-    <div class="menu settings">
+    <div class="menu settings hidden">
         <h1>Settings</h1>
         <div class="field">
             <label for="difficulty-selector">
@@ -59,9 +59,9 @@
         <button class="menu-btn back-btn">Back</button>
     </div>
 
-    <canvas id="board"></canvas>
+    <canvas id="board" class="hidden"></canvas>
 
-    <dialog class="menu pause">
+    <dialog class="menu pause hidden">
         <h1>Paused</h1>
         <button class="menu-btn resume-btn">Resume</button>
         <button class="menu-btn exit-btn">Exit</button>
@@ -75,9 +75,9 @@
         </div>
     </dialog>
 
-    <div class="message">
-        <div class="left message-part">Press P</div>
-        <div class="right message-part">to pause</div>
+    <div class="message hidden">
+        <div class="left message-part">Double click</div>
+        <div class="right message-part">to pause game</div>
     </div>
 
     <div class="scores">
@@ -85,6 +85,11 @@
         <div id="right-score" class="score">0</div>
     </div>
 
-    <div class="fps-display"></div>
+    <div class="fps-display hidden"></div>
+
+    <dialog class="menu rotate-screen hidden">
+        <img src="images/rotate-screen.svg" alt="Rotate Screen">
+        <p>Please rotate screen</p>
+    </dialog>
 </body>
 </html>

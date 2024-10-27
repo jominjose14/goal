@@ -3,7 +3,12 @@ export const isDebugMode = true;
 
 export const $welcomeMenu = document.querySelector(".menu.welcome");
 export const $settingsMenu = document.querySelector(".menu.settings");
+export const $rotateScreenPopup = document.querySelector(".menu.rotate-screen");
 export const $pauseMenu = document.querySelector(".menu.pause");
+export const $message = document.querySelector(".message");
+export const $scores = document.querySelector(".scores");
+export const $leftScore = document.getElementById("left-score");
+export const $rightScore = document.getElementById("right-score");
 export const $muteToggles = [document.querySelector(".menu.welcome .mute-toggle-btn"), document.querySelector(".menu.pause .mute-toggle-btn")];
 export const $fullscreenToggles = [document.querySelector(".menu.welcome .fullscreen-toggle-btn"), document.querySelector(".menu.pause .fullscreen-toggle-btn")];
 export const $fpsDisplay = document.querySelector(".fps-display");
@@ -21,7 +26,8 @@ export const yPuckMaxVelDividend = 3.5 * (fps/60) * 9; // TODO: handle for non 1
 export const puckMinVel = 1; // measured in px/frame
 export const puckCollisionEscapeMultiplier = 2.5;
 export const mainPlayerVelMultiplier = 2.5;
-export const aiPlayerAccel = 1;
+export const aiPlayerAccel = 2.5;
+export const puckStuckMaxDuration = 10; // measured in seconds
 
 // audio
 export const audio = {
@@ -34,12 +40,22 @@ export const audio = {
 
 // state
 export const state = {
-    debugCanvasFpsCounter: 0,
-    prevFrameTimestamp: 0,
-    prevCanvasWidth: $canvas.width,
-    prevCanvasHeight: $canvas.height,
+    fpsMetrics: {
+        canvasFpsCounter: 0,
+        prevFrameTimestamp: 0,
+    },
+    prevCanvasDim: {
+        width: $canvas.width,
+        height: $canvas.height,
+    },
+    stuckPuckMetrics: {
+        interval: null,
+        duration: 0, // measured in seconds
+        wasPuckOnLeftSide: false,
+    },
     context: $canvas.getContext('2d'),
     isGoal: true,
+    isPaused: false,
     isGameOver: true,
     mainPlayer: null,
     allPlayers: [],
