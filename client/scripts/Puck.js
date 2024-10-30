@@ -8,9 +8,9 @@ import {
     yPuckMaxVelDividend,
     puckMinVel,
     puckCollisionEscapeMultiplier,
-    puckRadiusFraction, puckStuckMaxDuration,
+    puckRadiusFraction, stuckPuckMaxDuration, puckPlayerCollisionCooldown,
 } from "./global.js";
-import {clamp, handleGoal} from "./functions.js";
+import {clamp, handleGoal, resetStuckPuckMetrics} from "./functions.js";
 
 export default class Puck {
     #xPos;
@@ -109,9 +109,9 @@ export default class Puck {
         this.xPos += this.xVel;
         this.yPos += this.yVel;
 
-        if(puckStuckMaxDuration <= state.stuckPuckMetrics.duration) {
+        if(stuckPuckMaxDuration <= state.stuckPuckMetrics.stuckDuration) {
             this.reset();
-            state.stuckPuckMetrics.duration = 0;
+            resetStuckPuckMetrics();
         }
 
         this.draw();
@@ -166,25 +166,22 @@ export default class Puck {
             const dy = this.yPos - player.yPos;
             const distance = Math.sqrt(dx * dx + dy * dy);
             const isColliding = distance <= (this.#radius + player.radius);
-            if(!isColliding) continue;
+
+            const timeElapsedSinceLastPuckPlayerCollision = window.performance.now() - state.prevPuckPlayerCollisionTimestamp;
+            const mustSkipCollision = timeElapsedSinceLastPuckPlayerCollision < puckPlayerCollisionCooldown;
+
+            if(!isColliding || mustSkipCollision) continue;
 
             didPlayerCollisionOccur = true;
+            state.prevPuckPlayerCollisionTimestamp = window.performance.now();
 
-            if(Math.sign(this.xVel) === Math.sign(player.xVel)) {
-                this.xVel = Math.max(this.xVel, player.xVel);
-            } else {
-                this.xVel = -this.xVel + player.xVel;
-            }
+            const cos = dx/distance;
+            const sec = 1/cos;
+            const sin = dy/distance;
+            const cosec = 1/sin;
 
-            if(Math.sign(this.yVel) === Math.sign(player.yVel)) {
-                this.yVel = Math.max(this.yVel, player.yVel);
-            } else {
-                this.yVel = -this.yVel + player.yVel;
-            }
-
-            // Move puck out of collision range
-            this.xPos += player.xVel * puckCollisionEscapeMultiplier;
-            this.yPos += player.yVel * puckCollisionEscapeMultiplier;
+            this.xVel = 2 * (player.xVel * sec + player.yVel * cosec) * cos - (this.xVel * sec + this.yVel * cosec) * cos;
+            this.yVel = 2 * (player.xVel * sec + player.yVel * cosec) * sin - (this.xVel * sec + this.yVel * cosec) * sin;
         }
 
         if(didPlayerCollisionOccur) {

@@ -11,18 +11,14 @@ import {
 
 // game logic
 function startRefreshingCanvas() {
-    state.stuckPuckMetrics.interval = setInterval(updateStuckPuckMetrics, 1000);
+    resetStuckPuckMetrics();
     state.fpsMetrics.prevFrameTimestamp = window.performance.now();
     refreshCanvas();
 }
 
 function refreshCanvas() {
     if (!state.isGameOver && !state.isPaused) requestAnimationFrame(refreshCanvas);
-
-    if(state.isGoal || state.isPaused || state.isGameOver) {
-        clearInterval(state.stuckPuckMetrics.interval);
-        state.stuckPuckMetrics.interval = null;
-    }
+    if (!state.isGoal) updateStuckPuckMetrics();
 
     const now = window.performance.now();
     const timeElapsedSincePrevFrame = now - state.fpsMetrics.prevFrameTimestamp;
@@ -95,10 +91,13 @@ function logForDebug() {
 }
 
 export function startOfflineGame() {
+    state.isPaused = false;
+
     $welcomeMenu.classList.add("hidden");
     $canvas.classList.remove("hidden");
     $message.classList.remove("hidden");
     $scores.classList.remove("hidden");
+
     document.addEventListener("keypress", event => onPauseUsingKeyPress(event));
     document.addEventListener("dblclick", onPauseUsingDoubleClick);
 
@@ -147,16 +146,29 @@ export function handleGoal() {
 }
 
 function updateStuckPuckMetrics() {
+    const elapsedTime = state.stuckPuckMetrics.prevCheckTimestamp - state.stuckPuckMetrics.startTimestamp;
+    const isNewSecond = state.stuckPuckMetrics.secondsCounter <= Math.floor(elapsedTime/1000);
+
     const isPuckOnLeftSide = state.puck.xPos < $canvas.width/2;
     const isPuckOnCentralLine = state.puck.xPos === $canvas.width/2;
 
     if(isPuckOnCentralLine || state.stuckPuckMetrics.wasPuckOnLeftSide !== isPuckOnLeftSide) {
-        state.stuckPuckMetrics.duration = 0;
-    } else {
-        state.stuckPuckMetrics.duration++;
+        state.stuckPuckMetrics.stuckDuration = 0;
+    } else if(isNewSecond) {
+        state.stuckPuckMetrics.stuckDuration++;
     }
 
+    if(isNewSecond) state.stuckPuckMetrics.secondsCounter++;
+    state.stuckPuckMetrics.prevCheckTimestamp = window.performance.now();
     state.stuckPuckMetrics.wasPuckOnLeftSide = isPuckOnLeftSide;
+}
+
+export function resetStuckPuckMetrics() {
+    state.stuckPuckMetrics.startTimestamp = window.performance.now();
+    state.stuckPuckMetrics.prevCheckTimestamp = window.performance.now();
+    state.stuckPuckMetrics.secondsCounter = 0;
+    state.stuckPuckMetrics.stuckDuration = 0;
+    state.stuckPuckMetrics.wasPuckOnLeftSide = false;
 }
 
 // this prevents puck from appearing above vertical rink lines as it passes into goal when coming in at a steep angle
@@ -186,23 +198,23 @@ function redrawVerticalRinkLines() {
 }
 
 export function resizeBoard() {
-    const clientWidthToHeightAspectRatio = window.innerWidth / window.innerHeight;
-    const clientHeightToWidthAspectRatio = window.innerHeight / window.innerWidth;
+    const clientWidthToHeightAspectRatio = window.visualViewport.width / window.visualViewport.height;
+    const clientHeightToWidthAspectRatio = window.visualViewport.height / window.visualViewport.width;
     const desiredAspectRatio = 16 / 9;
 
     if (Math.abs(clientWidthToHeightAspectRatio - desiredAspectRatio) <= 0.1 || Math.abs(clientHeightToWidthAspectRatio - desiredAspectRatio) < 0.1) {
         // device aspect ratio = 16:9
-        $canvas.width = window.innerWidth;
-        $canvas.height = window.innerHeight;
+        $canvas.width = window.visualViewport.width;
+        $canvas.height = window.visualViewport.height;
     } else if (Math.abs(clientWidthToHeightAspectRatio - desiredAspectRatio) > 0.1) {
         // client width:height aspect ratio > 16:9
-        const desiredWidth = window.innerHeight * 16 / 9;
+        const desiredWidth = window.visualViewport.height * 16 / 9;
         $canvas.width = desiredWidth;
-        $canvas.height = window.innerHeight;
+        $canvas.height = window.visualViewport.height;
     } else {
         // TODO: client width:height aspect ratio < 16:9
-        $canvas.width = window.innerHeight;
-        $canvas.height = window.innerWidth;
+        $canvas.width = window.visualViewport.height;
+        $canvas.height = window.visualViewport.width;
     }
 
     // Refresh context
@@ -257,7 +269,7 @@ export function onResume(event) {
     startRefreshingCanvas();
 }
 
-export function onMouseMove(event) {
+export function trackMouse(event) {
     requestAnimationFrame(() => state.mainPlayer.updatePosUsingMouse(event));
 }
 
@@ -268,4 +280,9 @@ export function onResize() {
 // utility
 export function clamp(low, value, high) {
     return Math.max(low, Math.min(value, high));
+}
+
+export function isHandheldDevice() {
+    const userAgent = navigator.userAgent;
+    return /Mobi|Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/.test(userAgent);
 }

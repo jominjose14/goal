@@ -27,7 +27,8 @@ export const puckMinVel = 1; // measured in px/frame
 export const puckCollisionEscapeMultiplier = 2.5;
 export const mainPlayerVelMultiplier = 2.5;
 export const aiPlayerAccel = 2.5;
-export const puckStuckMaxDuration = 10; // measured in seconds
+export const stuckPuckMaxDuration = 10; // measured in seconds
+export const puckPlayerCollisionCooldown = 100; // measured in milliseconds
 
 // audio
 export const audio = {
@@ -49,10 +50,13 @@ export const state = {
         height: $canvas.height,
     },
     stuckPuckMetrics: {
-        interval: null,
-        duration: 0, // measured in seconds
+        startTimestamp: 0,
+        prevCheckTimestamp: 0,
+        secondsCounter: 0,
+        stuckDuration: 0, // measured in seconds
         wasPuckOnLeftSide: false,
     },
+    prevPuckPlayerCollisionTimestamp: 0,
     context: $canvas.getContext('2d'),
     isGoal: true,
     isPaused: false,

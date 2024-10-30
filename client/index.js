@@ -13,8 +13,8 @@ import {
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {
-    closeModal,
-    onMouseMove, onPauseUsingDoubleClick,
+    closeModal, isHandheldDevice,
+    trackMouse, onPauseUsingDoubleClick,
     onPauseUsingKeyPress,
     onResize,
     onResume,
@@ -35,7 +35,12 @@ function main() {
     state.mainPlayer = new Player("hsla(190, 100%, 50%, 1)", "left", "main");
     state.puck = new Puck(0, 0, 20, "hsla(0, 0%, 100%, 1)");
 
-    document.body.addEventListener("mousemove", onMouseMove);
+    if(isHandheldDevice()) {
+        document.body.addEventListener("drag", event => trackMouse(event));
+    } else {
+        document.body.addEventListener("mousemove", event => trackMouse(event));
+    }
+
     window.addEventListener("resize", onResize);
 
     resizeBoard();
@@ -52,9 +57,9 @@ function debugOps() {
 }
 
 function attachEventListeners() {
-    window.screen.orientation.addEventListener("change", onChangeOrientation);
+    window.screen.orientation.addEventListener("change", event => onChangeOrientation(event));
 
-    // document.addEventListener("mousemove", playBgm);
+    document.addEventListener("click", playBgm, { once: true });
 
     document.querySelectorAll("button").forEach(button => button.addEventListener("click", () => {
         audio.buttonPress.play();
@@ -98,7 +103,6 @@ function attachEventListeners() {
 function playBgm() {
     audio.bgm.loop = true;
     audio.bgm.play();
-    document.removeEventListener("mousemove", playBgm);
 }
 
 function toggleMute() {
@@ -158,12 +162,14 @@ function handleSelectorClick($element) {
     }
 }
 
-function onChangeOrientation() {
-    if(window.innerWidth < window.innerHeight) {
+function onChangeOrientation(event) {
+    if(event === undefined && window.innerWidth < window.innerHeight || event !== undefined && event.target.type.includes("portrait")) {
+        // portrait orientation: show popup that asks user to rotate screen, do not allow user to play game
         $rotateScreenPopup.classList.remove("hidden");
         $rotateScreenPopup.showModal();
         $rotateScreenPopup.blur();
-    } else {
+    } else if(event === undefined && window.innerHeight < window.innerWidth || event !== undefined && event.target.type.includes("landscape")) {
+        // landscape orientation: hide popup, allow user to play game
         $rotateScreenPopup.classList.add("hidden");
         closeModal($rotateScreenPopup);
     }
@@ -183,6 +189,7 @@ function onChangeTheme() {
 
 function backToHomeScreen($element) {
     closeModal($element);
+    state.isPaused = false;
 
     state.isGameOver = true;
     state.allPlayers = [state.mainPlayer];

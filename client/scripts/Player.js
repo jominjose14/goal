@@ -105,10 +105,10 @@ export default class Player {
         this.yVel = 0;
     }
 
-    updatePosUsingMouse(mouseMoveEvent) {
-        if(mouseMoveEvent.target !== $canvas) return;
+    updatePosUsingMouse(mouseEvent) {
+        if(mouseEvent.target !== $canvas) return;
 
-        let x = mouseMoveEvent.offsetX;
+        let x = mouseEvent.offsetX;
         if(this.#team === "left") {
             const xBoardBoundStart = boardRinkFractionX * $canvas.width + this.#radius;
             const xBoardBoundEnd = $canvas.width/2 - this.#radius;
@@ -121,7 +121,7 @@ export default class Player {
 
         const yBoardBoundStart = boardRinkFractionY * $canvas.height + this.#radius;
         const yBoardBoundEnd = $canvas.height * (1 - boardRinkFractionY) - this.#radius;
-        const y = clamp(yBoardBoundStart, mouseMoveEvent.offsetY, yBoardBoundEnd);
+        const y = clamp(yBoardBoundStart, mouseEvent.offsetY, yBoardBoundEnd);
 
         if(this.#timestamp == null) {
             this.#timestamp = window.performance.now();
@@ -210,18 +210,18 @@ export default class Player {
         } else {
             if(this.#team === "right" && this.xPos < state.puck.xPos || this.#team === "left" && state.puck.xPos < this.xPos) {
                 this.reset();
-            }
-
-            if((state.puck.xPos + state.puck.radius) < this.xPos) {
-                this.xVel -= aiPlayerAccel;
             } else {
-                this.xVel += aiPlayerAccel;
-            }
+                if((state.puck.xPos + state.puck.radius) < this.xPos) {
+                    this.xVel -= aiPlayerAccel;
+                } else {
+                    this.xVel += aiPlayerAccel;
+                }
 
-            if((state.puck.yPos + state.puck.radius) < this.yPos) {
-                this.yVel -= aiPlayerAccel;
-            } else {
-                this.yVel += aiPlayerAccel;
+                if((state.puck.yPos + state.puck.radius) < this.yPos) {
+                    this.yVel -= aiPlayerAccel;
+                } else {
+                    this.yVel += aiPlayerAccel;
+                }
             }
         }
 
