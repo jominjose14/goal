@@ -14,10 +14,10 @@ import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {
     closeModal, isHandheldDevice,
-    trackMouse, onPauseUsingDoubleClick,
+    onMouseMove, onPauseUsingDoubleClick,
     onPauseUsingKeyPress,
     onResize,
-    onResume,
+    onResume, onTouchMove,
     resizeBoard,
     startOfflineGame
 } from "./scripts/functions.js";
@@ -36,9 +36,9 @@ function main() {
     state.puck = new Puck(0, 0, 20, "hsla(0, 0%, 100%, 1)");
 
     if(isHandheldDevice()) {
-        document.body.addEventListener("drag", event => trackMouse(event));
+        $canvas.addEventListener("touchmove", event => onTouchMove(event));
     } else {
-        document.body.addEventListener("mousemove", event => trackMouse(event));
+        $canvas.addEventListener("mousemove", event => onMouseMove(event));
     }
 
     window.addEventListener("resize", onResize);

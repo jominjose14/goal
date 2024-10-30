@@ -46,7 +46,7 @@ function refreshCanvas() {
 function debugOpsPerRefresh() {
     // drawForDebug();
     // assertsForDebug();
-    logForDebug();
+    // logForDebug();
 }
 
 function drawForDebug() {
@@ -269,8 +269,14 @@ export function onResume(event) {
     startRefreshingCanvas();
 }
 
-export function trackMouse(event) {
-    requestAnimationFrame(() => state.mainPlayer.updatePosUsingMouse(event));
+export function onMouseMove(event) {
+    requestAnimationFrame(() => state.mainPlayer.updatePosViaUserInput(event.offsetX, event.offsetY));
+}
+
+export function onTouchMove(event) {
+    const offsetX = event.targetTouches[0].clientX - event.target.getBoundingClientRect().left;
+    const offsetY = event.targetTouches[0].clientY - event.target.getBoundingClientRect().top;
+    requestAnimationFrame(() => state.mainPlayer.updatePosViaUserInput(offsetX, offsetY));
 }
 
 export function onResize() {

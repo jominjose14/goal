@@ -105,10 +105,7 @@ export default class Player {
         this.yVel = 0;
     }
 
-    updatePosUsingMouse(mouseEvent) {
-        if(mouseEvent.target !== $canvas) return;
-
-        let x = mouseEvent.offsetX;
+    updatePosViaUserInput(x, y) {
         if(this.#team === "left") {
             const xBoardBoundStart = boardRinkFractionX * $canvas.width + this.#radius;
             const xBoardBoundEnd = $canvas.width/2 - this.#radius;
@@ -121,7 +118,7 @@ export default class Player {
 
         const yBoardBoundStart = boardRinkFractionY * $canvas.height + this.#radius;
         const yBoardBoundEnd = $canvas.height * (1 - boardRinkFractionY) - this.#radius;
-        const y = clamp(yBoardBoundStart, mouseEvent.offsetY, yBoardBoundEnd);
+        y = clamp(yBoardBoundStart, y, yBoardBoundEnd);
 
         if(this.#timestamp == null) {
             this.#timestamp = window.performance.now();
@@ -232,16 +229,15 @@ export default class Player {
     hardAiUpdate() {
         if(state.isGoal) return;
 
-        const target = $canvas;
-        const offsetX = 0.9 * $canvas.width;
-        let offsetY = state.puck.yPos;
+        const x = 0.9 * $canvas.width;
+        let y = state.puck.yPos;
 
         // Edge case: if puck is inside ai player's striker, temporarily displace striker to allow puck to escape
         if(this.xPos === state.puck.xPos && this.yPos === state.puck.yPos) {
-            offsetY = $canvas.height/2 < state.puck.yPos ? 0.2 * $canvas.height : 0.8 * $canvas.height;
+            y = $canvas.height/2 < state.puck.yPos ? 0.2 * $canvas.height : 0.8 * $canvas.height;
         }
 
-        this.updatePosUsingMouse({target, offsetX, offsetY});
+        this.updatePosViaUserInput(x, y);
     }
 
     update() {
