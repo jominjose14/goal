@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg" href="images/favicon.svg">
+
+    <title>Goal</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Protest+Riot&family=Redressed&family=Rubik+Scribble&family=Sedgwick+Ave+Display&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="style.css">
+    <script src="index.js" type="module" defer></script>
+</head>
+<body>
+    <div class="menu welcome">
+        <h1 class="game-title">Goal</h1>
+        <div class="text-btns">
+            <button class="menu-btn text-btn online-game-btn">Online</button>
+            <button class="menu-btn text-btn offline-game-btn">Offline</button>
+        </div>
+        <div class="icon-btns">
+            <button class="icon-btn mute-toggle-btn">
+                <img src="images/unmuted.svg" alt="Mute Toggle">
+            </button>
+            <button class="icon-btn fullscreen-toggle-btn">
+                <img src="images/fullscreen.svg" alt="Fullscreen Toggle">
+            </button>
+            <button class="icon-btn settings-btn">
+                <img src="images/settings.svg" alt="Settings">
+            </button>
+        </div>
+    </div>
+
+    <div class="menu settings hidden">
+        <h1>Settings</h1>
+        <div class="field">
+            <label for="difficulty-selector">
+                Difficulty
+            </label>
+            <button id="difficulty-selector" class="menu-btn selector" data-values="Easy,Medium,Hard">
+                Easy
+            </button>
+        </div>
+        <div class="field">
+            <label for="players-per-team-selector">Players Per Team</label>
+            <button id="players-per-team-selector" class="menu-btn selector" data-values="One,Two">
+                One
+            </button>
+        </div>
+        <div class="field">
+            <label for="theme-selector">Theme</label>
+            <button id="theme-selector" class="menu-btn selector" data-values="Light,Dark">
+                Dark
+            </button>
+        </div>
+        <button class="menu-btn back-btn">Back</button>
+    </div>
+
+    <canvas id="board" class="hidden"></canvas>
+
+    <dialog class="menu pause hidden">
+        <h1>Paused</h1>
+        <button class="menu-btn resume-btn">Resume</button>
+        <button class="menu-btn exit-btn">Exit</button>
+        <div class="icon-btns">
+            <button class="icon-btn mute-toggle-btn">
+                <img src="images/unmuted.svg" alt="Mute Toggle">
+            </button>
+            <button class="icon-btn fullscreen-toggle-btn">
+                <img src="images/fullscreen.svg" alt="Fullscreen Toggle">
+            </button>
+        </div>
+    </dialog>
+
+    <div class="message hidden">
+        <div class="left message-part">Double click</div>
+        <div class="right message-part">to pause game</div>
+    </div>
+
+    <div class="scores hidden">
+        <div id="left-score" class="score">0</div>
+        <div id="right-score" class="score">0</div>
+    </div>
+
+    <div class="fps-display hidden"></div>
+
+    <dialog class="menu rotate-screen hidden">
+        <img src="images/rotate-screen.svg" alt="Rotate Screen">
+        <p>Please rotate screen</p>
+    </dialog>
+</body>
+</html>
