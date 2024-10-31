@@ -24,15 +24,8 @@ type createUserBody struct {
 }
 
 func createUserHandler(writer http.ResponseWriter, req *http.Request) {
-	if len(users) == maxRoomCount {
-		err := errors.New("cannot create new user since server already maintains max number of users")
-		log.Println(err)
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	decoder := json.NewDecoder(req.Body)
-	body := createUserBody{}
+	var body createUserBody
 	err := decoder.Decode(&body)
 	if err != nil {
 		log.Println(err)
@@ -40,19 +33,68 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, _, err = findUser(body.UserName)
-	if err == nil {
-		err := errors.New("user already exists")
+	currUser := user{name: body.UserName}
+	err = users.add(&currUser)
+	if err != nil {
 		log.Println(err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
-	} else {
-		newUser := user{body.UserName}
-		users = append(users, &newUser) // TODO: ensure no race condition
 	}
 
 	log.Printf("User %s created", body.UserName)
-	fmt.Fprintf(writer, "User %s created", body.UserName)
+
+	conn, err := upgrader.Upgrade(writer, req, nil)
+	if err != nil {
+		users.deleteUsingName(currUser.name)
+		log.Println("Error upgrading to WebSocket: ", err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	defer conn.Close()
+	currUser.conn = conn
+
+	for {
+		var newState state
+		err := conn.ReadJSON(newState)
+		if err != nil {
+			log.Println("Error reading message:", err)
+			break
+		}
+
+		if currUser.room != nil {
+			currUser.room.stateChannel <- &newState
+		}
+	}
+
+	// Cleanup after disconnection
+
+	// reassign room creator if currUser created a room
+	if currUser.room.creator == &currUser && currUser.room.members.len() > 1 {
+		firstMember, err := currUser.room.members.at(0)
+		if err != nil {
+			err = fmt.Errorf("failed to reassign creator to room %s while current creator disconnects. Reason: %v", currUser.room.name, err)
+			log.Println(err)
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		currUser.room.creator = firstMember
+	}
+
+	// delete currUser from the room they joined
+	if currUser.room != nil {
+		currUser.room.members.deleteUsingName(currUser.name)
+	}
+
+	// delete room if currUser was the only member
+	if currUser.room.members.len() == 0 {
+		close(currUser.room.stateChannel)
+		rooms.deleteUsingName(currUser.room.name)
+	}
+
+	// delete user
+	users.deleteUsingName(currUser.name)
 }
 
 type roomBody struct {
@@ -68,7 +110,7 @@ var upgrader = websocket.Upgrader{
 }
 
 func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
-	if len(rooms) == maxRoomCount {
+	if rooms.len() == maxRoomCount {
 		err := errors.New("cannot create new room since server already maintains max number of rooms")
 		log.Println(err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -76,7 +118,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	decoder := json.NewDecoder(req.Body)
-	body := roomBody{}
+	var body roomBody
 	err := decoder.Decode(&body)
 	if err != nil {
 		log.Println(err)
@@ -84,7 +126,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, _, err = findRoom(body.RoomName)
+	_, _, err = rooms.find(body.RoomName)
 	if err == nil {
 		err := errors.New("room name taken")
 		log.Println(err)
@@ -92,7 +134,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, userPtr, err := findUser(body.UserName)
+	_, userPtr, err := users.find(body.UserName)
 	if err != nil {
 		err := errors.New("could not find user that is trying to create room")
 		log.Println(err)
@@ -100,41 +142,17 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	members := make([]*user, 1, maxUsersPerRoom)
-	members[0] = userPtr
-	newRoom := room{name: body.RoomName, creator: userPtr, members: members}
-	rooms = append(rooms, &newRoom)
-
-	log.Printf("Room %s created", newRoom.name)
-
-	conn, err := upgrader.Upgrade(writer, req, nil)
+	members := userArray{slice: make([]*user, 1, maxUsersPerRoom)}
+	members.add(userPtr)
+	newRoom := room{name: body.RoomName, creator: userPtr, members: &members, stateChannel: make(chan *state)}
+	err = rooms.add(&newRoom)
 	if err != nil {
-		deleteRoomUsingName(newRoom.name)
-		log.Println("Error upgrading to WebSocket: ", err)
+		log.Println(err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	defer conn.Close()
-	newRoom.conn = conn
-
-	for {
-		messageType, message, err := conn.ReadMessage()
-		if err != nil {
-			log.Println("Error reading message:", err)
-			break
-		}
-
-		log.Printf("Received message: %s", message)
-
-		err = conn.WriteMessage(messageType, message)
-		if err != nil {
-			log.Println("Error writing message:", err)
-			break
-		}
-	}
-
-	deleteRoomUsingName(newRoom.name) // TODO: transfer ownership if members array has at least 2 users
+	log.Printf("Room %s created", newRoom.name)
 }
 
 func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
@@ -147,7 +165,7 @@ func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, roomPtr, err := findRoom(body.RoomName)
+	_, roomPtr, err := rooms.find(body.RoomName)
 	if err != nil {
 		err := errors.New("invalid room name")
 		log.Println(err)
@@ -155,14 +173,14 @@ func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if len(roomPtr.members) == maxUsersPerRoom {
+	if roomPtr.members.len() == maxUsersPerRoom {
 		err := errors.New("room is full")
 		log.Println(err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	_, userPtr, err := findUser(body.UserName)
+	_, userPtr, err := users.find(body.UserName)
 	if err != nil {
 		err := errors.New("could not find user")
 		log.Println(err)
@@ -170,7 +188,7 @@ func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	roomPtr.members = append(roomPtr.members, userPtr)
+	roomPtr.members.add(userPtr)
 }
 
 func main() {

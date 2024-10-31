@@ -1,8 +1,8 @@
 //go:build ignore
 // +build ignore
 
-//nolint:govet // This ignores govet for the whole file
-//lint:ignore SA1000 // This ignores a staticcheck warning for the whole file
+//nolint:govet
+//lint:ignore SA1000
 
 package snippets
 
