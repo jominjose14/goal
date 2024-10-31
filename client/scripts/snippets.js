@@ -165,7 +165,8 @@ function excelAngleHybridCollisionLogic() {
     this.yVel = 1.5 * player.yVel - this.yVel + (dx === 0 ? 0 : dy * player.xVel/dx);
 }
 
-function TwoStepProjectionCollisionLogic() {
+// wrong
+function twoStepProjectionCollisionLogic() {
     const cos = dx/distance;
     const sec = 1/cos;
     const sin = dy/distance;
@@ -173,6 +174,24 @@ function TwoStepProjectionCollisionLogic() {
 
     this.xVel = 2 * (player.xVel * sec + player.yVel * cosec) * cos - (this.xVel * sec + this.yVel * cosec) * cos;
     this.yVel = 2 * (player.xVel * sec + player.yVel * cosec) * sin - (this.xVel * sec + this.yVel * cosec) * sin;
+}
+
+// wrong
+function negSinCollisionLogic() {
+    const cos = dx/distance;
+    const sin = dy/distance;
+    const negSin = -sin;
+
+    this.xVel = 2 * (player.xVel * cos + player.yVel * sin) * cos - (this.xVel * cos + this.yVel * sin) * cos;
+    this.yVel = 2 * (player.xVel * cos + player.yVel * sin) * negSin - (this.xVel * cos + this.yVel * sin) * negSin;
+}
+
+function readableAmeerWhatsappImgCollisionLogic() {
+    const cos = dx/distance;
+    const sin = dy/distance;
+
+    this.xVel = 2 * (player.xVel * cos + player.yVel * sin) * cos - (this.xVel * cos + this.yVel * sin) * cos;
+    this.yVel = 2 * (player.xVel * cos + player.yVel * sin) * sin - (this.xVel * cos + this.yVel * sin) * sin;
 }
 
 function unitVector(dx, dy ,distance) {

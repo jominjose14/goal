@@ -18,6 +18,7 @@ export default class Player {
     #timestamp = null;
     #xVel = 0;
     #yVel = 0;
+    prevCollisionTimestamp = 0;
 
     constructor(color, team, type) {
         this.#color = color;

@@ -21,14 +21,14 @@ export const playerRadiusFraction = 0.0225 // TODO: make this ratio editable in 
 
 export const fps = 60;
 export const millisecondsBetweenFrames = 1000 / fps;
-export const xPuckMaxVelDividend = 3.5 * (fps/60) * 16; // TODO: handle for non 16:9 aspect ratios
-export const yPuckMaxVelDividend = 3.5 * (fps/60) * 9; // TODO: handle for non 16:9 aspect ratios
+export const xPuckMaxVelDividend = 3 * (fps/60) * 16; // TODO: handle for non 16:9 aspect ratios
+export const yPuckMaxVelDividend = 3 * (fps/60) * 9; // TODO: handle for non 16:9 aspect ratios
 export const puckMinVel = 1; // measured in px/frame
 export const puckCollisionEscapeMultiplier = 2.5;
 export const mainPlayerVelMultiplier = 2.5;
 export const aiPlayerAccel = 2.5;
 export const stuckPuckMaxDuration = 10; // measured in seconds
-export const puckPlayerCollisionCooldown = 100; // measured in milliseconds
+export const puckPlayerCollisionCooldown = 750; // measured in milliseconds
 
 // audio
 export const audio = {
@@ -56,7 +56,6 @@ export const state = {
         stuckDuration: 0, // measured in seconds
         wasPuckOnLeftSide: false,
     },
-    prevPuckPlayerCollisionTimestamp: 0,
     context: $canvas.getContext('2d'),
     isGoal: true,
     isPaused: false,

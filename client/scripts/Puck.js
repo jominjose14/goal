@@ -165,23 +165,27 @@ export default class Puck {
             const dx = this.xPos - player.xPos;
             const dy = this.yPos - player.yPos;
             const distance = Math.sqrt(dx * dx + dy * dy);
-            const isColliding = distance <= (this.#radius + player.radius);
+            const radiiSum = this.radius + player.radius
+            const isColliding = distance <= radiiSum;
 
-            const timeElapsedSinceLastPuckPlayerCollision = window.performance.now() - state.prevPuckPlayerCollisionTimestamp;
-            const mustSkipCollision = timeElapsedSinceLastPuckPlayerCollision < puckPlayerCollisionCooldown;
+            const durationSinceLastCollision = window.performance.now() - player.prevCollisionTimestamp;
+            const mustSkipCollision = durationSinceLastCollision < puckPlayerCollisionCooldown;
 
             if(!isColliding || mustSkipCollision) continue;
 
             didPlayerCollisionOccur = true;
-            state.prevPuckPlayerCollisionTimestamp = window.performance.now();
+            player.prevCollisionTimestamp = window.performance.now();
 
+            // update velocities
             const cos = dx/distance;
-            const sec = 1/cos;
             const sin = dy/distance;
-            const cosec = 1/sin;
 
-            this.xVel = 2 * (player.xVel * sec + player.yVel * cosec) * cos - (this.xVel * sec + this.yVel * cosec) * cos;
-            this.yVel = 2 * (player.xVel * sec + player.yVel * cosec) * sin - (this.xVel * sec + this.yVel * cosec) * sin;
+            this.xVel = 2 * (player.xVel * cos + player.yVel * sin) * cos - (this.xVel * cos + this.yVel * sin) * cos;
+            this.yVel = 2 * (player.xVel * cos + player.yVel * sin) * sin - (this.xVel * cos + this.yVel * sin) * sin;
+
+            // teleport puck out of collision range
+            this.xPos = player.xPos + dx * radiiSum/distance;
+            this.yPos = player.yPos + dy * radiiSum/distance;
         }
 
         if(didPlayerCollisionOccur) {
