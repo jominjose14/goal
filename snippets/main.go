@@ -14,6 +14,10 @@ import (
 	"net/http"
 )
 
+func handleAudio(writer http.ResponseWriter, req *http.Request) {
+	http.Redirect(writer, req, "/public"+req.URL.String(), http.StatusSeeOther)
+}
+
 type createUserBody struct {
 	UserName string `json:"userName"`
 }

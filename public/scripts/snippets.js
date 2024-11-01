@@ -1,4 +1,5 @@
-import {$canvas, aiPlayerAccel, audio, boardRinkFractionY, puckCollisionEscapeMultiplier, state} from "./global";
+import {$canvas, aiPlayerAccel, boardRinkFractionY, puckCollisionEscapeMultiplier, state} from "./global";
+import {playSound} from "./functions";
 
 function rotate(x, y, sin, cos, reverse) {
     return {
@@ -98,8 +99,7 @@ function oldHybridCollisionLogic() {
     }
 
     if(didPlayerCollisionOccur) {
-        audio.playerHit.play();
-        audio.playerHit.currentTime = 0;
+        playSound("playerHit", false);
     }
 }
 
@@ -305,4 +305,14 @@ function mediumAiWithOffsetFollow() {
 
     this.xPos += this.xVel;
     this.yPos += this.yVel;
+}
+
+function oldAudioSetup() {
+    export const sounds = {
+        bgm: new Audio("../audio/bgm.mp3"),
+        buttonPress: new Audio("../audio/button-press.mp3"),
+        boardHit: new Audio("../audio/board-hit.mp3"),
+        playerHit: new Audio("../audio/player-hit.mp3"),
+        goal: new Audio("../audio/goal.mp3"),
+    }
 }

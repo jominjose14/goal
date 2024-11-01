@@ -1,3 +1,7 @@
+* {
+    box-sizing: border-box;
+}
+
 html, body {
     margin: 0;
     padding: 0;
@@ -14,7 +18,7 @@ body {
     background-size: 100dvw 100dvh;
     background-repeat: no-repeat;
     background-attachment: fixed;
-    font-family: "Protest Riot", sans-serif;
+    font-family: "Protest Riot", "Trebuchet MS", sans-serif;
     color: hsl(0, 0%, 100%, 1);
     overflow: hidden;
 }
@@ -43,7 +47,7 @@ body {
         margin-bottom: 1.5vmin;
     }
 
-    .menu-btn {
+    .menu-btn, input[type="text"] {
         all: unset;
         cursor: pointer;
         background-color: hsla(0, 0%, 100%, 0.05);
@@ -56,6 +60,25 @@ body {
 
         &:hover {
             background-color: hsla(0, 0%, 100%, 0.1);
+        }
+    }
+
+    input[type="text"] {
+        cursor: text;
+    }
+
+    .field {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 1vmin;
+        /*width: 8.5em;*/
+        width: fit-content;
+
+        label {
+            text-align: center;
+            color: hsla(0, 0%, 100%, 0.6);
         }
     }
 
@@ -119,19 +142,33 @@ body {
 .settings {
     gap: 3vmin;
     padding-inline: 3em;
+}
 
+.menu.online, .menu.create-room {
+    input[type="text"] {
+        font-family: inherit;
+    }
+
+    .error-msg {
+        width: 12.33em;
+        text-align: center;
+        color: hsl(0, 100%, 78%);
+        font-size: 0.75em;
+        margin-bottom: 1em;
+    }
+}
+
+.menu.create-room {
     .field {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        gap: 1vmin;
-        width: 8.5em;
+        margin-bottom: 0.5em;
+    }
 
-        label {
-            text-align: center;
-            color: hsla(0, 0%, 100%, 0.6);
-        }
+    .create-room-btn {
+        margin-top: 1em;
+    }
+
+    .back-btn {
+        margin-top: 0;
     }
 }
 
@@ -267,6 +304,23 @@ body {
         width: 40vmin;
         filter: invert(1);
         margin-bottom: 7vmin;
+    }
+}
+
+.loading-spinner {
+    height: fit-content;
+    width: fit-content;
+    background-color: transparent;
+    border: none;
+
+    &::backdrop {
+        background-color: hsla(0, 0%, 0%, 0.5);
+    }
+
+    img {
+        height: 10vmin;
+        width: 10vmin;
+        filter: invert(1);
     }
 }
 

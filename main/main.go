@@ -15,44 +15,46 @@ func handleRoot(writer http.ResponseWriter, req *http.Request) {
 	http.Redirect(writer, req, "/public/index.html", http.StatusSeeOther)
 }
 
-func handleAudio(writer http.ResponseWriter, req *http.Request) {
-	http.Redirect(writer, req, "/public"+req.URL.String(), http.StatusSeeOther)
-}
-
-type createUserBody struct {
+type createUserPayload struct {
 	UserName string `json:"userName"`
 }
 
+type createUserReplyPayload struct {
+	IsSuccess bool   `json:"isSuccess"`
+	Message   string `json:"message"`
+}
+
 func createUserHandler(writer http.ResponseWriter, req *http.Request) {
-	decoder := json.NewDecoder(req.Body)
-	var body createUserBody
-	err := decoder.Decode(&body)
-	if err != nil {
-		log.Println(err)
-		http.Error(writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	currUser := user{name: body.UserName}
-	err = users.add(&currUser)
-	if err != nil {
-		log.Println(err)
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("User %s created", body.UserName)
+	var currUser user
 
 	conn, err := upgrader.Upgrade(writer, req, nil)
 	if err != nil {
-		users.deleteUsingName(currUser.name)
 		log.Println("Error upgrading to WebSocket: ", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	defer conn.Close()
-	currUser.conn = conn
+	currUser = user{conn: conn}
+
+	var payload createUserPayload
+	err = conn.ReadJSON(payload)
+	if err != nil {
+		log.Println(err)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	currUser.name = payload.UserName
+	err = users.add(&currUser)
+	if err != nil {
+		log.Println(err)
+		conn.WriteJSON(createUserReplyPayload{IsSuccess: false, Message: err.Error()})
+		return
+	}
+
+	conn.WriteJSON(createUserReplyPayload{IsSuccess: true, Message: fmt.Sprintf("Created user %s", currUser.name)})
+	log.Printf("created user %s", currUser.name)
 
 	for {
 		var newState state
@@ -70,7 +72,7 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	// Cleanup after disconnection
 
 	// reassign room creator if currUser created a room
-	if currUser.room.creator == &currUser && currUser.room.members.len() > 1 {
+	if currUser.room != nil && currUser.room.creator == &currUser && currUser.room.members.len() > 1 {
 		firstMember, err := currUser.room.members.at(0)
 		if err != nil {
 			err = fmt.Errorf("failed to reassign creator to room %s while current creator disconnects. Reason: %v", currUser.room.name, err)
@@ -88,16 +90,16 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	// delete room if currUser was the only member
-	if currUser.room.members.len() == 0 {
+	if currUser.room != nil && currUser.room.members.len() == 0 {
 		close(currUser.room.stateChannel)
 		rooms.deleteUsingName(currUser.room.name)
 	}
 
 	// delete user
-	users.deleteUsingName(currUser.name)
+	_ = users.deleteUsingName(currUser.name)
 }
 
-type roomBody struct {
+type roomPayload struct {
 	RoomName string `json:"roomName"`
 	UserName string `json:"userName"`
 }
@@ -118,15 +120,15 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	decoder := json.NewDecoder(req.Body)
-	var body roomBody
-	err := decoder.Decode(&body)
+	var payload roomPayload
+	err := decoder.Decode(&payload)
 	if err != nil {
 		log.Println(err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	_, _, err = rooms.find(body.RoomName)
+	_, _, err = rooms.find(payload.RoomName)
 	if err == nil {
 		err := errors.New("room name taken")
 		log.Println(err)
@@ -134,7 +136,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, userPtr, err := users.find(body.UserName)
+	_, userPtr, err := users.find(payload.UserName)
 	if err != nil {
 		err := errors.New("could not find user that is trying to create room")
 		log.Println(err)
@@ -144,7 +146,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 
 	members := userArray{slice: make([]*user, 1, maxUsersPerRoom)}
 	members.add(userPtr)
-	newRoom := room{name: body.RoomName, creator: userPtr, members: &members, stateChannel: make(chan *state)}
+	newRoom := room{name: payload.RoomName, creator: userPtr, members: &members, stateChannel: make(chan *state)}
 	err = rooms.add(&newRoom)
 	if err != nil {
 		log.Println(err)
@@ -157,15 +159,15 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 
 func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
-	body := roomBody{}
-	err := decoder.Decode(&body)
+	payload := roomPayload{}
+	err := decoder.Decode(&payload)
 	if err != nil {
 		log.Println(err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	_, roomPtr, err := rooms.find(body.RoomName)
+	_, roomPtr, err := rooms.find(payload.RoomName)
 	if err != nil {
 		err := errors.New("invalid room name")
 		log.Println(err)
@@ -180,7 +182,7 @@ func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	_, userPtr, err := users.find(body.UserName)
+	_, userPtr, err := users.find(payload.UserName)
 	if err != nil {
 		err := errors.New("could not find user")
 		log.Println(err)
@@ -197,7 +199,6 @@ func main() {
 	http.Handle("/public/", http.StripPrefix("/public/", fileServer))
 
 	http.HandleFunc("/", handleRoot)
-	http.HandleFunc("/audio/", handleAudio)
 	http.HandleFunc("POST /user", createUserHandler)
 	http.HandleFunc("POST /room", createRoomHandler)
 	http.HandleFunc("POST /join", joinRoomHandler)

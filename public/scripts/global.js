@@ -1,8 +1,14 @@
 // constants
 export const isDebugMode = true;
 
+export const domain = isDebugMode ? "127.0.0.1:8080" : "myDomain";
+export const maxUserNameLength = 25;
+
 export const $welcomeMenu = document.querySelector(".menu.welcome");
 export const $settingsMenu = document.querySelector(".menu.settings");
+export const $onlineMenu = document.querySelector(".menu.online");
+export const $createRoomMenu = document.querySelector(".menu.create-room");
+export const $joinRoomMenu = document.querySelector(".menu.join-room");
 export const $rotateScreenPopup = document.querySelector(".menu.rotate-screen");
 export const $pauseMenu = document.querySelector(".menu.pause");
 export const $message = document.querySelector(".message");
@@ -12,6 +18,7 @@ export const $rightScore = document.getElementById("right-score");
 export const $muteToggles = [document.querySelector(".menu.welcome .mute-toggle-btn"), document.querySelector(".menu.pause .mute-toggle-btn")];
 export const $fullscreenToggles = [document.querySelector(".menu.welcome .fullscreen-toggle-btn"), document.querySelector(".menu.pause .fullscreen-toggle-btn")];
 export const $fpsDisplay = document.querySelector(".fps-display");
+export const $loadingSpinner = document.querySelector(".loading-spinner")
 export const $canvas = document.getElementById("board");
 
 export const boardRinkFractionX = 0.008; // for 16:9 aspect ratio
@@ -28,16 +35,20 @@ export const puckCollisionEscapeMultiplier = 2.5;
 export const mainPlayerVelMultiplier = 2.5;
 export const aiPlayerAccel = 2.5;
 export const stuckPuckMaxDuration = 10; // measured in seconds
-export const puckPlayerCollisionCooldown = 750; // measured in milliseconds
+export const puckPlayerCollisionCooldown = 250; // measured in milliseconds
 
-// audio
-export const audio = {
-    bgm: new Audio("../audio/bgm.mp3"),
-    buttonPress: new Audio("../audio/button-press.mp3"),
-    boardHit: new Audio("../audio/board-hit.mp3"),
-    playerHit: new Audio("../audio/player-hit.mp3"),
-    goal: new Audio("../audio/goal.mp3"),
-}
+// sounds
+export const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+export const masterGain = audioContext.createGain();
+masterGain.connect(audioContext.destination);
+export const buffers = {};
+export const soundUrls = {
+    bgm: "audio/bgm.mp3",
+    buttonPress: "audio/button-press.mp3",
+    boardHit: "audio/board-hit.mp3",
+    playerHit: "audio/player-hit.mp3",
+    goal: "audio/goal.mp3",
+};
 
 // state
 export const state = {
@@ -56,6 +67,7 @@ export const state = {
         stuckDuration: 0, // measured in seconds
         wasPuckOnLeftSide: false,
     },
+    webSocketConn: null,
     context: $canvas.getContext('2d'),
     isGoal: true,
     isPaused: false,

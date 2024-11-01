@@ -59,6 +59,52 @@
         <button class="menu-btn back-btn">Back</button>
     </div>
 
+    <div class="menu online hidden">
+        <h1>Online</h1>
+        <div class="field">
+            <label for="user-name">User Name</label>
+            <input type="text" name="user-name" id="user-name" placeholder="Type here">
+            <div class="error-msg"></div>
+        </div>
+        <button class="menu-btn create-room-menu-btn">Create Room</button>
+        <button class="menu-btn join-room-menu-btn">Join Room</button>
+        <button class="menu-btn back-btn">Home</button>
+    </div>
+
+    <div class="menu create-room hidden">
+        <h1>Create</h1>
+        <div class="field">
+            <label for="room-name">Room Name</label>
+            <input type="text" name="room-name" id="room-name" placeholder="Type here">
+            <div class="error-msg"></div>
+        </div>
+        <div class="field">
+            <label for="room-team-selector">Team</label>
+            <button id="room-team-selector" class="menu-btn selector" data-values="Left,Right">
+                Left
+            </button>
+        </div>
+        <button class="menu-btn create-room-btn">Create</button>
+        <button class="menu-btn back-btn">Home</button>
+    </div>
+
+    <div class="menu join-room hidden">
+        <h1>Join</h1>
+        <div class="field">
+            <label>No rooms available</label>
+            <template id="join-btn">
+                <div class="joinable-room">
+                    <div class="joinable-room-name"></div>
+                    <div class="joinable-room-teams">
+                        <button class="joinable-room-team-btn">L</button>
+                        <button class="joinable-room-team-btn">R</button>
+                    </div>
+                </div>
+            </template>
+        </div>
+        <button class="menu-btn back-btn">Home</button>
+    </div>
+
     <canvas id="board" class="hidden"></canvas>
 
     <dialog class="menu pause hidden">
@@ -86,6 +132,10 @@
     </div>
 
     <div class="fps-display hidden"></div>
+
+    <dialog class="menu loading-spinner hidden">
+        <img src="images/loading.svg" alt="Loading Spinner">
+    </dialog>
 
     <dialog class="menu rotate-screen hidden">
         <img src="images/rotate-screen.svg" alt="Rotate Screen">

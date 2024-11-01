@@ -3,10 +3,18 @@ import {
     $canvas,
     $pauseMenu,
     boardRinkFractionX,
-    audio,
     state,
     millisecondsBetweenFrames,
-    isDebugMode, $welcomeMenu, $message, $scores, $rightScore, $leftScore
+    isDebugMode,
+    $welcomeMenu,
+    $message,
+    $scores,
+    $rightScore,
+    $leftScore,
+    domain,
+    $onlineMenu,
+    maxUserNameLength,
+    $loadingSpinner, audioContext, buffers, masterGain
 } from "./global.js";
 
 // game logic
@@ -93,10 +101,10 @@ function logForDebug() {
 export function startOfflineGame() {
     state.isPaused = false;
 
-    $welcomeMenu.classList.add("hidden");
-    $canvas.classList.remove("hidden");
-    $message.classList.remove("hidden");
-    $scores.classList.remove("hidden");
+    hide($welcomeMenu);
+    show($canvas);
+    show($message);
+    show($scores);
 
     document.addEventListener("keypress", event => onPauseUsingKeyPress(event));
     document.addEventListener("dblclick", onPauseUsingDoubleClick);
@@ -123,8 +131,7 @@ export function newRound() {
 export function handleGoal() {
     state.isGoal = true;
 
-    audio.goal.play();
-    audio.goal.currentTime = 0;
+    playSound("goal", false);
 
     if (state.puck.xPos < $canvas.width / 2) {
         // right team scores
@@ -242,35 +249,35 @@ export function onPauseUsingKeyPress(event) {
     if(state.isPaused) {
         onResume({target: $pauseMenu});
     } else {
-        audio.buttonPress.play();
-        audio.buttonPress.currentTime = 0;
+        playSound("buttonPress", false);
 
         state.isPaused = true;
-        $pauseMenu.classList.remove("hidden");
+        show($pauseMenu);
         $pauseMenu.showModal();
         $pauseMenu.blur();
     }
 }
 
 export function onPauseUsingDoubleClick() {
-    audio.buttonPress.play();
-    audio.buttonPress.currentTime = 0;
+    playSound("buttonPress", false);
 
     state.isPaused = true;
-    $pauseMenu.classList.remove("hidden");
+    show($pauseMenu);
     $pauseMenu.showModal();
     $pauseMenu.blur();
 }
 
 export function onResume(event) {
     closeModal(event.target);
-    $pauseMenu.classList.add("hidden");
+    hide($pauseMenu);
     state.isPaused = false;
     startRefreshingCanvas();
 }
 
 export function onMouseMove(event) {
-    requestAnimationFrame(() => state.mainPlayer.updatePosViaUserInput(event.offsetX, event.offsetY));
+    const offsetX = event.offsetX !== undefined ? event.offsetX : event.layerX;
+    const offsetY = event.offsetY !== undefined ? event.offsetY : event.layerY;
+    requestAnimationFrame(() => state.mainPlayer.updatePosViaUserInput(offsetX, offsetY));
 }
 
 export function onTouchMove(event) {
@@ -283,7 +290,79 @@ export function onResize() {
     requestAnimationFrame(resizeBoard);
 }
 
+// online
+export function loadSound(name, url) {
+    fetch(url)
+        .then(response => response.arrayBuffer())
+        .then(data => audioContext.decodeAudioData(data))
+        .then(buffer => { buffers[name] = buffer; })
+        .catch(e => console.error(`Error loading sound ${name}. Reason: `, e));
+}
+
+export function connectUsingUserName() {
+    return new Promise((resolve) => {
+        if(state.webSocketConn !== null) resolve();
+
+        const $userName = document.getElementById("user-name");
+        const $errorMsg = $onlineMenu.querySelector(".error-msg");
+
+        if($userName.value === "") {
+            $errorMsg.textContent = "User name cannot be empty";
+            state.webSocketConn = null;
+            resolve();
+            return;
+        } else if(maxUserNameLength < $userName.value.length) {
+            $errorMsg.textContent = `User name cannot be more than ${maxUserNameLength} characters`;
+            state.webSocketConn = null;
+            resolve();
+            return;
+        }
+
+        state.webSocketConn = new WebSocket(`ws://${domain}/user`);
+
+        state.webSocketConn.onopen = () => {
+            if(isDebugMode) console.log("Web socket connection established");
+            state.webSocketConn.send(JSON.stringify({userName: $userName.value.trim()}));
+        }
+
+        state.webSocketConn.onmessage = (event) => {
+            if(isDebugMode) console.log("Received message from server via web socket");
+            const payload = JSON.parse(event.data);
+            if(payload.isSuccess) {
+                resolve();
+            } else {
+                payload.message = payload.message[0].toUpperCase() + payload.message.substring(1);
+                $errorMsg.textContent = payload.message;
+                state.webSocketConn = null;
+                resolve();
+            }
+        }
+
+        if(state.webSocketConn !== null) state.webSocketConn.onerror = () => {
+            if(isDebugMode) console.log("Error during web socket communication");
+            $errorMsg.textContent = "Error during communication with server";
+            state.webSocketConn = null;
+            resolve();
+        }
+
+        if(state.webSocketConn !== null) state.webSocketConn.onclose = () => {
+            if(isDebugMode) console.log("Web socket connection closed");
+            $errorMsg.textContent = "Can't connect to server";
+            state.webSocketConn = null;
+            resolve();
+        }
+    });
+}
+
 // utility
+export function playSound(name, shouldLoop) {
+    const source = audioContext.createBufferSource();
+    source.loop = shouldLoop;
+    source.buffer = buffers[name];
+    source.connect(masterGain);
+    source.start(0);
+}
+
 export function clamp(low, value, high) {
     return Math.max(low, Math.min(value, high));
 }
@@ -291,4 +370,23 @@ export function clamp(low, value, high) {
 export function isHandheldDevice() {
     const userAgent = navigator.userAgent;
     return /Mobi|Android|iPhone|iPad|iPod|Opera Mini|IEMobile|WPDesktop/.test(userAgent);
+}
+
+export function show($element) {
+    $element.classList.remove("hidden");
+}
+
+export function hide($element) {
+    $element.classList.add("hidden");
+}
+
+export function startLoading() {
+    show($loadingSpinner);
+    $loadingSpinner.showModal();
+    $loadingSpinner.blur();
+}
+
+export function stopLoading() {
+    hide($loadingSpinner);
+    $loadingSpinner.close();
 }

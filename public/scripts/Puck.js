@@ -2,15 +2,13 @@ import {
     $canvas,
     boardRinkFractionX,
     boardRinkFractionY,
-    audio,
     state,
     xPuckMaxVelDividend,
     yPuckMaxVelDividend,
     puckMinVel,
-    puckCollisionEscapeMultiplier,
     puckRadiusFraction, stuckPuckMaxDuration, puckPlayerCollisionCooldown,
 } from "./global.js";
-import {clamp, handleGoal, resetStuckPuckMetrics} from "./functions.js";
+import {clamp, handleGoal, playSound, resetStuckPuckMetrics} from "./functions.js";
 
 export default class Puck {
     #xPos;
@@ -147,8 +145,7 @@ export default class Puck {
             didBoardCollisionOccur = true;
         }
         if(didBoardCollisionOccur) {
-            audio.boardHit.play();
-            audio.boardHit.currentTime = 0;
+            playSound("boardHit", false);
         }
 
         // Handle edge case: if puck is stuck within rink area, reset its position
@@ -189,8 +186,7 @@ export default class Puck {
         }
 
         if(didPlayerCollisionOccur) {
-            audio.playerHit.play();
-            audio.playerHit.currentTime = 0;
+            playSound("playerHit", false);
         }
     }
 }

@@ -5,21 +5,31 @@ import {
     $pauseMenu,
     $settingsMenu,
     $welcomeMenu,
-    audio,
-    $fullscreenToggles, isDebugMode,
+    soundUrls,
+    $fullscreenToggles,
+    isDebugMode,
     $muteToggles,
-    state, $canvas, $message, $scores, $leftScore, $rightScore, $rotateScreenPopup
+    state,
+    $canvas,
+    $message,
+    $scores,
+    $leftScore,
+    $rightScore,
+    $rotateScreenPopup,
+    $onlineMenu,
+    $createRoomMenu,
+    $joinRoomMenu, $loadingSpinner, audioContext, buffers, masterGain
 } from "./scripts/global.js";
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {
-    closeModal, isHandheldDevice,
+    closeModal, connectUsingUserName, hide, isHandheldDevice, loadSound,
     onMouseMove, onPauseUsingDoubleClick,
     onPauseUsingKeyPress,
     onResize,
-    onResume, onTouchMove,
-    resizeBoard,
-    startOfflineGame
+    onResume, onTouchMove, playSound,
+    resizeBoard, show, startLoading,
+    startOfflineGame, stopLoading
 } from "./scripts/functions.js";
 
 // Call main
@@ -27,6 +37,7 @@ main();
 
 // Function definitions
 function main() {
+    loadSounds();
     onChangeOrientation();
     attachEventListeners();
 
@@ -48,7 +59,7 @@ function main() {
 }
 
 function debugOps() {
-    $fpsDisplay.classList.remove("hidden");
+    show($fpsDisplay);
 
     setInterval(() => {
         $fpsDisplay.textContent = state.fpsMetrics.canvasFpsCounter.toString();
@@ -56,17 +67,23 @@ function debugOps() {
     }, 1000);
 }
 
+function loadSounds() {
+    for(const soundName of Object.keys(soundUrls)) {
+        loadSound(soundName, soundUrls[soundName]);
+    }
+}
+
 function attachEventListeners() {
     window.screen.orientation.addEventListener("change", event => onChangeOrientation(event));
 
-    document.addEventListener("click", playBgm, { once: true });
+    document.addEventListener("click", () => playSound("bgm", true), { once: true });
 
     document.querySelectorAll("button").forEach(button => button.addEventListener("click", () => {
-        audio.buttonPress.play();
-        audio.buttonPress.currentTime = 0;
+        playSound("buttonPress", false);
     }));
 
-    document.querySelector(".menu.welcome .offline-game-btn").onclick = startOfflineGame;
+    $welcomeMenu.querySelector(".online-game-btn").onclick = onClickOnlineGameBtn;
+    $welcomeMenu.querySelector(".offline-game-btn").onclick = startOfflineGame;
 
     for(const muteToggle of $muteToggles) {
         muteToggle.onclick = toggleMute;
@@ -96,13 +113,18 @@ function attachEventListeners() {
         });
     }
 
+    $onlineMenu.querySelector(".create-room-menu-btn").onclick = onClickCreateRoomBtn;
+    $onlineMenu.querySelector(".join-room-menu-btn").onclick = onClickJoinRoomBtn;
+
     $pauseMenu.querySelector(".resume-btn").onclick = onResume;
     $pauseMenu.querySelector(".exit-btn").onclick = (event) => backToHomeScreen(event.target);
 }
 
-function playBgm() {
-    audio.bgm.loop = true;
-    audio.bgm.play();
+function onClickOnlineGameBtn() {
+    hide($welcomeMenu);
+    $onlineMenu.querySelector(".error-msg").textContent = "";
+    show($onlineMenu);
+    document.getElementById("user-name").focus();
 }
 
 function toggleMute() {
@@ -116,9 +138,7 @@ function toggleMute() {
         }
     }
 
-    for(const key of Object.keys(audio)) {
-        audio[key].muted = !audio[key].muted;
-    }
+    masterGain.gain.value = masterGain.gain.value === 0 ? 1 : 0;
 }
 
 function toggleFullscreen() {
@@ -140,14 +160,14 @@ function toggleFullscreen() {
 }
 
 function openSettings() {
-    $welcomeMenu.classList.add("hidden");
-    $settingsMenu.classList.remove("hidden");
+    hide($welcomeMenu);
+    show($settingsMenu);
 }
 
 function handleBack($element) {
     const $parent = $element.parentNode;
-    $parent.classList.add("hidden");
-    $welcomeMenu.classList.remove("hidden");
+    hide($parent);
+    show($welcomeMenu);
 }
 
 function handleSelectorClick($element) {
@@ -165,12 +185,12 @@ function handleSelectorClick($element) {
 function onChangeOrientation(event) {
     if(event === undefined && window.innerWidth < window.innerHeight || event !== undefined && event.target.type.includes("portrait")) {
         // portrait orientation: show popup that asks user to rotate screen, do not allow user to play game
-        $rotateScreenPopup.classList.remove("hidden");
+        show($rotateScreenPopup);
         $rotateScreenPopup.showModal();
         $rotateScreenPopup.blur();
     } else if(event === undefined && window.innerHeight < window.innerWidth || event !== undefined && event.target.type.includes("landscape")) {
         // landscape orientation: hide popup, allow user to play game
-        $rotateScreenPopup.classList.add("hidden");
+        hide($rotateScreenPopup);
         closeModal($rotateScreenPopup);
     }
 }
@@ -195,15 +215,42 @@ function backToHomeScreen($element) {
     state.allPlayers = [state.mainPlayer];
     state.nonMainPlayers = [];
 
-    $canvas.classList.add("hidden");
-    $pauseMenu.classList.add("hidden");
-    $message.classList.add("hidden");
-    $scores.classList.add("hidden");
-    $welcomeMenu.classList.remove("hidden");
+    hide($canvas);
+    hide($pauseMenu);
+    hide($message);
+    hide($scores);
+    show($welcomeMenu);
 
     document.removeEventListener("keypress", onPauseUsingKeyPress);
     document.removeEventListener("dblclick", onPauseUsingDoubleClick);
 
     $leftScore.textContent = "0";
     $rightScore.textContent = "0";
+}
+
+async function onClickCreateRoomBtn() {
+    $onlineMenu.querySelector(".error-msg").textContent = "";
+
+    startLoading();
+    await connectUsingUserName();
+    stopLoading();
+
+    if(state.webSocketConn === null) return;
+
+    hide($onlineMenu);
+    show($createRoomMenu);
+    document.getElementById("room-name").focus();
+}
+
+async function onClickJoinRoomBtn() {
+    $onlineMenu.querySelector(".error-msg").textContent = "";
+
+    startLoading();
+    await connectUsingUserName();
+    stopLoading();
+
+    if(state.webSocketConn === null) return;
+
+    hide($onlineMenu);
+    show($joinRoomMenu);
 }

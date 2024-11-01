@@ -24,7 +24,7 @@ func broadcast(roomPtr *room) {
 		for _, userPtr := range membersSnapshot {
 			err := userPtr.conn.WriteJSON(currState)
 			if err != nil {
-				log.Printf("Error broadcasting state from user %s to user %s. Reason: %v\n", currState.userName, userPtr.name, err)
+				log.Printf("Error broadcasting state from user %s to user %s. Reason: %v\n", currState.UserName, userPtr.name, err)
 			}
 		}
 	}

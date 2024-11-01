@@ -19,6 +19,7 @@ type userArray struct {
 	slice []*user
 }
 
+const maxUserNameLength = 25
 const maxUserCount = maxRoomCount * maxUsersPerRoom
 
 var users userArray = userArray{slice: make([]*user, 0, maxUserCount)}
@@ -43,6 +44,11 @@ func (users *userArray) at(idx int) (*user, error) {
 }
 
 func (users *userArray) add(newUser *user) error {
+	err := validateUserName(newUser.name)
+	if err != nil {
+		return err
+	}
+
 	users.mu.Lock()
 	defer users.mu.Unlock()
 
@@ -50,24 +56,13 @@ func (users *userArray) add(newUser *user) error {
 		return errors.New("server already maintains max number of users")
 	}
 
-	_, err := findUserIdx(users.slice, newUser.name)
+	_, err = findUserIdx(users.slice, newUser.name)
 	if err == nil {
-		return errors.New(fmt.Sprintf("user with name %s already exists", newUser.name))
+		return fmt.Errorf("user with name %s already exists", newUser.name)
 	}
 
 	users.slice = append(users.slice, newUser)
 	return nil
-}
-
-// not meant for use outside this file
-func findUserIdx(slice []*user, name string) (int, error) {
-	for i, userPtr := range slice {
-		if userPtr.name == name {
-			return i, nil
-		}
-	}
-
-	return -1, errors.New("user not found")
 }
 
 func (users *userArray) find(userName string) (int, *user, error) {
@@ -118,4 +113,27 @@ func (users *userArray) takeSnapshot() []*user {
 	copy(snapshot, users.slice)
 
 	return snapshot
+}
+
+// util functions: not meant to be used outside this file
+func validateUserName(userName string) error {
+	if userName == "" {
+		return errors.New("user name cannot be empty")
+	}
+
+	if maxUserNameLength < len(userName) {
+		return fmt.Errorf("user name cannot be more than %v characters", maxUserNameLength)
+	}
+
+	return nil
+}
+
+func findUserIdx(slice []*user, name string) (int, error) {
+	for i, userPtr := range slice {
+		if userPtr.name == name {
+			return i, nil
+		}
+	}
+
+	return -1, errors.New("user not found")
 }
