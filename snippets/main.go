@@ -25,7 +25,7 @@ type createUserBody struct {
 func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	if len(users) == maxRoomCount {
 		err := errors.New("cannot create new user since server already maintains max number of users")
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -34,7 +34,7 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	body := createUserBody{}
 	err := decoder.Decode(&body)
 	if err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -42,7 +42,7 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	_, err = findUser(body.UserName)
 	if err == nil {
 		err := errors.New("user already exists")
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	} else {
@@ -50,7 +50,7 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 		users = append(users, &newUser)
 	}
 
-	log.Printf("User %s created", body.UserName)
+	log.Printf("[INFO] User %s created", body.UserName)
 	fmt.Fprintf(writer, "User %s created", body.UserName)
 }
 
@@ -62,7 +62,7 @@ type createRoomBody struct {
 func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	if len(rooms) == maxRoomCount {
 		err := errors.New("cannot create new room since server already maintains max number of rooms")
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -71,7 +71,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	body := createRoomBody{}
 	err := decoder.Decode(&body)
 	if err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -79,7 +79,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	userPtr, err := findUser(body.UserName)
 	if err != nil {
 		err := errors.New("could not find user that is trying to create room")
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -88,7 +88,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	members[0] = userPtr
 	rooms = append(rooms, &room{name: body.RoomName, creator: userPtr, members: members})
 
-	log.Printf("Room %s created", body.RoomName)
+	log.Printf("[INFO] Room %s created", body.RoomName)
 	fmt.Fprintf(writer, "Room %s created", body.RoomName)
 }
 

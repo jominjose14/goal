@@ -65,6 +65,7 @@ body {
 
     input[type="text"] {
         cursor: text;
+        font-family: 'Trebuchet MS', sans-serif;
     }
 
     .field {
@@ -153,6 +154,7 @@ body {
         width: 12.33em;
         text-align: center;
         color: hsl(0, 100%, 78%);
+        font-family: 'Trebuchet MS', sans-serif;
         font-size: 0.75em;
         margin-bottom: 1em;
     }
@@ -160,7 +162,7 @@ body {
 
 .menu.create-room {
     .field {
-        margin-bottom: 0.5em;
+        /*margin-bottom: 0.5em;*/
     }
 
     .create-room-btn {

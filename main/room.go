@@ -9,22 +9,81 @@ import (
 
 const maxRoomCount = 16
 const maxUsersPerRoom = 4
+const maxUsersPerTeam = 2
 
 type room struct {
-	name         string
-	creator      *user
-	members      *userArray
-	stateChannel chan *state
+	mu             sync.Mutex
+	name           string
+	creator        *user
+	members        *userArray
+	leftTeamCount  int
+	rightTeamCount int
+	stateChannel   chan *state
+}
+
+func (room *room) memberCount() int {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+	return room.members.len()
+}
+
+func (room *room) addMember(userPtr *user) error {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	if room.members.len() == maxUsersPerRoom {
+		return errors.New("room is full")
+	}
+
+	if userPtr.team == "left" && room.leftTeamCount == maxUsersPerTeam {
+		return fmt.Errorf("there are already %v players in left team", maxUsersPerTeam)
+	} else if userPtr.team == "right" && room.rightTeamCount == maxUsersPerTeam {
+		return fmt.Errorf("there are already %v players in right team", maxUsersPerTeam)
+	}
+
+	err := room.members.add(userPtr)
+	if err != nil {
+		return err
+	}
+
+	if userPtr.team == "left" {
+		room.leftTeamCount++
+	} else {
+		room.rightTeamCount++
+	}
+
+	return nil
+}
+
+func (room *room) deleteMember(name string, team string) error {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	err := room.members.deleteUsingName(name)
+	if err != nil {
+		return err
+	}
+
+	if team == "left" {
+		room.leftTeamCount--
+	} else {
+		room.rightTeamCount--
+	}
+
+	return nil
 }
 
 func broadcast(roomPtr *room) {
 	for currState := range roomPtr.stateChannel {
 		membersSnapshot := roomPtr.members.takeSnapshot()
+		if len(membersSnapshot) < 2 {
+			continue
+		}
 
 		for _, userPtr := range membersSnapshot {
 			err := userPtr.conn.WriteJSON(currState)
 			if err != nil {
-				log.Printf("Error broadcasting state from user %s to user %s. Reason: %v\n", currState.UserName, userPtr.name, err)
+				log.Printf("[ERROR] error broadcasting state from user %s to user %s. Reason: %v\n", currState.UserName, userPtr.name, err)
 			}
 		}
 	}
@@ -112,4 +171,16 @@ func (rooms *roomArray) deleteUsingName(roomName string) error {
 	rooms.slice[idx] = rooms.slice[len(rooms.slice)-1]
 	rooms.slice = rooms.slice[:len(rooms.slice)-1]
 	return nil
+}
+
+func (rooms *roomArray) namesSnapshot() []string {
+	rooms.mu.Lock()
+	defer rooms.mu.Unlock()
+
+	roomList := make([]string, len(rooms.slice))
+	for i, room := range rooms.slice {
+		roomList[i] = room.name
+	}
+
+	return roomList
 }

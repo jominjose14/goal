@@ -9,13 +9,13 @@ import {
 import {clamp} from "./functions.js";
 
 export default class Player {
-    #xPos;
-    #yPos;
     #radius;
     #color;
     #team;
     #type; // main OR ai OR remote
-    #timestamp = null;
+    #xPos;
+    #yPos;
+    #timestampToMeasureVel = null;
     #xVel = 0;
     #yVel = 0;
     prevCollisionTimestamp = 0;
@@ -47,6 +47,14 @@ export default class Player {
 
     get radius() {
         return this.#radius;
+    }
+
+    get team() {
+        return this.#team;
+    }
+
+    set team(team) {
+        this.#team = team;
     }
 
     set xPos(xPos) {
@@ -121,20 +129,20 @@ export default class Player {
         const yBoardBoundEnd = $canvas.height * (1 - boardRinkFractionY) - this.#radius;
         y = clamp(yBoardBoundStart, y, yBoardBoundEnd);
 
-        if(this.#timestamp == null) {
-            this.#timestamp = window.performance.now();
+        if(this.#timestampToMeasureVel == null) {
+            this.#timestampToMeasureVel = window.performance.now();
             this.xPos = x;
             this.yPos = y;
         }
 
         const now = window.performance.now();
-        const dt = Math.max(1, now - this.#timestamp); // max op to prevent zero division
+        const dt = Math.max(1, now - this.#timestampToMeasureVel); // max op to prevent zero division
         const dx = x - this.xPos;
         const dy = y - this.yPos;
         this.xVel = mainPlayerVelMultiplier * dx / dt;
         this.yVel = mainPlayerVelMultiplier * dy / dt;
 
-        this.#timestamp = Date.now();
+        this.#timestampToMeasureVel = Date.now();
         this.xPos = x;
         this.yPos = y;
     }

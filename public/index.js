@@ -23,7 +23,7 @@ import {
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {
-    closeModal, connectUsingUserName, hide, isHandheldDevice, loadSound,
+    closeModal, connectUsingUserName, createRoom, hide, isHandheldDevice, loadSound,
     onMouseMove, onPauseUsingDoubleClick,
     onPauseUsingKeyPress,
     onResize,
@@ -113,8 +113,12 @@ function attachEventListeners() {
         });
     }
 
-    $onlineMenu.querySelector(".create-room-menu-btn").onclick = onClickCreateRoomBtn;
-    $onlineMenu.querySelector(".join-room-menu-btn").onclick = onClickJoinRoomBtn;
+    $onlineMenu.querySelector(".create-room-menu-btn").onclick = onClickCreateRoomMenuBtn;
+    $onlineMenu.querySelector(".join-room-menu-btn").onclick = onClickJoinRoomMenuBtn;
+    $createRoomMenu.querySelector(".create-room-btn").onclick = onClickCreateRoomBtn;
+    for(const joinRoomBtn of $joinRoomMenu.querySelectorAll(".join-room-btn")) {
+        joinRoomBtn.onclick = event => onClickJoinRoomBtn(event);
+    }
 
     $pauseMenu.querySelector(".resume-btn").onclick = onResume;
     $pauseMenu.querySelector(".exit-btn").onclick = (event) => backToHomeScreen(event.target);
@@ -228,7 +232,7 @@ function backToHomeScreen($element) {
     $rightScore.textContent = "0";
 }
 
-async function onClickCreateRoomBtn() {
+async function onClickCreateRoomMenuBtn() {
     $onlineMenu.querySelector(".error-msg").textContent = "";
 
     startLoading();
@@ -242,7 +246,7 @@ async function onClickCreateRoomBtn() {
     document.getElementById("room-name").focus();
 }
 
-async function onClickJoinRoomBtn() {
+async function onClickJoinRoomMenuBtn() {
     $onlineMenu.querySelector(".error-msg").textContent = "";
 
     startLoading();
@@ -253,4 +257,23 @@ async function onClickJoinRoomBtn() {
 
     hide($onlineMenu);
     show($joinRoomMenu);
+}
+
+async function onClickCreateRoomBtn() {
+    $createRoomMenu.querySelector(".error-msg").textContent = "";
+
+    const $roomNameTxtInput = document.getElementById("room-name");
+    const roomName = $roomNameTxtInput.value.trim();
+    const $teamSelector = document.getElementById("room-team-selector");
+    const team = $teamSelector.textContent.toLowerCase();
+
+    startLoading();
+    await createRoom(roomName, team);
+    stopLoading();
+}
+
+async function onClickJoinRoomBtn(event) {
+    $joinRoomMenu.querySelector(".error-msg").textContent = "";
+
+    // TODO: Implement the rest
 }

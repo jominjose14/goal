@@ -11,6 +11,7 @@ import (
 type user struct {
 	name string
 	conn *websocket.Conn
+	team string
 	room *room
 }
 

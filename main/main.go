@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func handleRoot(writer http.ResponseWriter, req *http.Request) {
+func rootHandler(writer http.ResponseWriter, req *http.Request) {
 	http.Redirect(writer, req, "/public/index.html", http.StatusSeeOther)
 }
 
@@ -29,7 +29,7 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 
 	conn, err := upgrader.Upgrade(writer, req, nil)
 	if err != nil {
-		log.Println("Error upgrading to WebSocket: ", err)
+		log.Println("[ERROR] Error upgrading to WebSocket: ", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -38,9 +38,9 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	currUser = user{conn: conn}
 
 	var payload createUserPayload
-	err = conn.ReadJSON(payload)
+	err = conn.ReadJSON(&payload)
 	if err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -48,19 +48,19 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	currUser.name = payload.UserName
 	err = users.add(&currUser)
 	if err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		conn.WriteJSON(createUserReplyPayload{IsSuccess: false, Message: err.Error()})
 		return
 	}
 
 	conn.WriteJSON(createUserReplyPayload{IsSuccess: true, Message: fmt.Sprintf("Created user %s", currUser.name)})
-	log.Printf("created user %s", currUser.name)
+	log.Printf("[INFO] created user %s", currUser.name)
 
 	for {
 		var newState state
 		err := conn.ReadJSON(newState)
 		if err != nil {
-			log.Println("Error reading message:", err)
+			log.Println("[ERROR]", "Error reading message:", err)
 			break
 		}
 
@@ -72,11 +72,11 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	// Cleanup after disconnection
 
 	// reassign room creator if currUser created a room
-	if currUser.room != nil && currUser.room.creator == &currUser && currUser.room.members.len() > 1 {
+	if currUser.room != nil && currUser.room.creator == &currUser && currUser.room.memberCount() > 1 {
 		firstMember, err := currUser.room.members.at(0)
 		if err != nil {
 			err = fmt.Errorf("failed to reassign creator to room %s while current creator disconnects. Reason: %v", currUser.room.name, err)
-			log.Println(err)
+			log.Println("[ERROR]", err)
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -90,7 +90,7 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	// delete room if currUser was the only member
-	if currUser.room != nil && currUser.room.members.len() == 0 {
+	if currUser.room != nil && currUser.room.memberCount() == 0 {
 		close(currUser.room.stateChannel)
 		rooms.deleteUsingName(currUser.room.name)
 	}
@@ -102,6 +102,7 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 type roomPayload struct {
 	RoomName string `json:"roomName"`
 	UserName string `json:"userName"`
+	Team     string `json:"team"`
 }
 
 var upgrader = websocket.Upgrader{
@@ -114,7 +115,7 @@ var upgrader = websocket.Upgrader{
 func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	if rooms.len() == maxRoomCount {
 		err := errors.New("cannot create new room since server already maintains max number of rooms")
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -123,7 +124,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	var payload roomPayload
 	err := decoder.Decode(&payload)
 	if err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -131,7 +132,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	_, _, err = rooms.find(payload.RoomName)
 	if err == nil {
 		err := errors.New("room name taken")
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -139,30 +140,38 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	_, userPtr, err := users.find(payload.UserName)
 	if err != nil {
 		err := errors.New("could not find user that is trying to create room")
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	members := userArray{slice: make([]*user, 1, maxUsersPerRoom)}
-	members.add(userPtr)
-	newRoom := room{name: payload.RoomName, creator: userPtr, members: &members, stateChannel: make(chan *state)}
+	// update user's team
+	userPtr.team = payload.Team
+
+	newRoom := room{name: payload.RoomName, creator: userPtr, members: &userArray{slice: make([]*user, 0, maxUsersPerRoom)}, stateChannel: make(chan *state)}
+	err = newRoom.addMember(userPtr)
+	if err != nil {
+		log.Println("[ERROR]", err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	err = rooms.add(&newRoom)
 	if err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Room %s created", newRoom.name)
+	log.Printf("[INFO] created room %s", newRoom.name)
 }
 
 func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
-	payload := roomPayload{}
+	var payload roomPayload
 	err := decoder.Decode(&payload)
 	if err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -170,39 +179,47 @@ func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	_, roomPtr, err := rooms.find(payload.RoomName)
 	if err != nil {
 		err := errors.New("invalid room name")
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if roomPtr.members.len() == maxUsersPerRoom {
-		err := errors.New("room is full")
-		log.Println(err)
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	_, userPtr, err := users.find(payload.UserName)
 	if err != nil {
 		err := errors.New("could not find user")
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	roomPtr.members.add(userPtr)
+	// update user's team
+	userPtr.team = payload.Team
+
+	err = roomPtr.addMember(userPtr)
+	if err != nil {
+		log.Println("[ERROR]", err)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func listRoomsHandler(writer http.ResponseWriter, req *http.Request) {
+	roomList := rooms.namesSnapshot()
+	writer.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(writer).Encode(roomList)
 }
 
 func main() {
 	publicPath := filepath.Join("..", "public")
 	fileServer := http.FileServer(http.Dir(publicPath))
-	http.Handle("/public/", http.StripPrefix("/public/", fileServer))
+	http.Handle("GET /public/", http.StripPrefix("/public/", fileServer))
 
-	http.HandleFunc("/", handleRoot)
-	http.HandleFunc("POST /user", createUserHandler)
+	http.HandleFunc("GET /", rootHandler)
+	http.HandleFunc("GET /user", createUserHandler)
+	http.HandleFunc("GET /rooms", listRoomsHandler)
 	http.HandleFunc("POST /room", createRoomHandler)
 	http.HandleFunc("POST /join", joinRoomHandler)
 
-	log.Println("Starting server at port 8080")
+	log.Println("[INFO] starting server at port 8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

@@ -52,13 +52,29 @@ export const soundUrls = {
 
 // state
 export const state = {
-    fpsMetrics: {
-        canvasFpsCounter: 0,
-        prevFrameTimestamp: 0,
+    // == Online ==
+    sharedState: {
+        userName: "",
+        team: "",
+        xPos: 0,
+        yPos: 0,
+        xVel: 0,
+        yVel: 0,
     },
+    webSocketConn: null,
+    userName: null,
+    isOnlineGame: false,
+    // == Offline ==
+    // canvas
+    context: $canvas.getContext('2d'),
     prevCanvasDim: {
         width: $canvas.width,
         height: $canvas.height,
+    },
+    // metrics
+    fpsMetrics: {
+        canvasFpsCounter: 0,
+        prevFrameTimestamp: 0,
     },
     stuckPuckMetrics: {
         startTimestamp: 0,
@@ -67,8 +83,7 @@ export const state = {
         stuckDuration: 0, // measured in seconds
         wasPuckOnLeftSide: false,
     },
-    webSocketConn: null,
-    context: $canvas.getContext('2d'),
+    // gameplay
     isGoal: true,
     isPaused: false,
     isGameOver: true,

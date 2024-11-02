@@ -28,7 +28,7 @@ func doUserArrayOps() {
 
 		case "append":
 			users.slice = append(users.slice, op.userPtr)
-			log.Println("Added user %s to user array", op.userPtr.name)
+			log.Println("[INFO] Added user %s to user array", op.userPtr.name)
 			op.isSuccess <- true
 
 		case "find":

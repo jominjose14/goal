@@ -1,20 +1,24 @@
 import Player from "./Player.js";
 import {
     $canvas,
-    $pauseMenu,
-    boardRinkFractionX,
-    state,
-    millisecondsBetweenFrames,
-    isDebugMode,
-    $welcomeMenu,
-    $message,
-    $scores,
-    $rightScore,
+    $createRoomMenu, $joinRoomMenu,
     $leftScore,
-    domain,
+    $loadingSpinner,
+    $message,
     $onlineMenu,
+    $pauseMenu,
+    $rightScore,
+    $scores,
+    $welcomeMenu,
+    audioContext,
+    boardRinkFractionX,
+    buffers,
+    domain,
+    isDebugMode,
+    masterGain,
     maxUserNameLength,
-    $loadingSpinner, audioContext, buffers, masterGain
+    millisecondsBetweenFrames,
+    state
 } from "./global.js";
 
 // game logic
@@ -44,6 +48,11 @@ function refreshCanvas() {
     }
 
     redrawVerticalRinkLines();
+
+    if(state.isOnlineGame) {
+        shareStateWithServer(); // TODO: handle sudden loss of connection
+        // TODO: create function to update all other players on board
+    }
 
     if(isDebugMode) {
         state.fpsMetrics.canvasFpsCounter++;
@@ -114,10 +123,25 @@ export function startOfflineGame() {
     newRound();
 }
 
+export function startOnlineGame(mainPlayerTeam) {
+    state.isPaused = false;
+
+    hide($createRoomMenu);
+    hide($joinRoomMenu);
+    show($canvas);
+    show($message);
+    show($scores);
+
+    document.addEventListener("keypress", event => onPauseUsingKeyPress(event));
+    document.addEventListener("dblclick", onPauseUsingDoubleClick);
+
+    state.mainPlayer.team = mainPlayerTeam;
+    newRound();
+}
+
 export function newRound() {
     state.isGameOver = true;
 
-    // TODO: find out why velocities appear to not be reset
     state.puck.reset();
     for (const player of state.allPlayers) {
         player.reset();
@@ -301,19 +325,24 @@ export function loadSound(name, url) {
 
 export function connectUsingUserName() {
     return new Promise((resolve) => {
-        if(state.webSocketConn !== null) resolve();
-
-        const $userName = document.getElementById("user-name");
-        const $errorMsg = $onlineMenu.querySelector(".error-msg");
-
-        if($userName.value === "") {
-            $errorMsg.textContent = "User name cannot be empty";
-            state.webSocketConn = null;
+        if(state.webSocketConn !== null) {
             resolve();
             return;
-        } else if(maxUserNameLength < $userName.value.length) {
+        }
+
+        const $userNameTxtInput = document.getElementById("user-name");
+        const $errorMsg = $onlineMenu.querySelector(".error-msg");
+
+        if($userNameTxtInput.value === "") {
+            $errorMsg.textContent = "User name cannot be empty";
+            state.webSocketConn = null;
+            state.userName = null;
+            resolve();
+            return;
+        } else if(maxUserNameLength < $userNameTxtInput.value.length) {
             $errorMsg.textContent = `User name cannot be more than ${maxUserNameLength} characters`;
             state.webSocketConn = null;
+            state.userName = null;
             resolve();
             return;
         }
@@ -322,18 +351,20 @@ export function connectUsingUserName() {
 
         state.webSocketConn.onopen = () => {
             if(isDebugMode) console.log("Web socket connection established");
-            state.webSocketConn.send(JSON.stringify({userName: $userName.value.trim()}));
+            state.webSocketConn.send(JSON.stringify({userName: $userNameTxtInput.value.trim()}));
         }
 
         state.webSocketConn.onmessage = (event) => {
             if(isDebugMode) console.log("Received message from server via web socket");
             const payload = JSON.parse(event.data);
             if(payload.isSuccess) {
+                state.userName = $userNameTxtInput.value.trim();
                 resolve();
             } else {
                 payload.message = payload.message[0].toUpperCase() + payload.message.substring(1);
                 $errorMsg.textContent = payload.message;
                 state.webSocketConn = null;
+                state.userName = null;
                 resolve();
             }
         }
@@ -342,6 +373,7 @@ export function connectUsingUserName() {
             if(isDebugMode) console.log("Error during web socket communication");
             $errorMsg.textContent = "Error during communication with server";
             state.webSocketConn = null;
+            state.userName = null;
             resolve();
         }
 
@@ -349,9 +381,54 @@ export function connectUsingUserName() {
             if(isDebugMode) console.log("Web socket connection closed");
             $errorMsg.textContent = "Can't connect to server";
             state.webSocketConn = null;
+            state.userName = null;
             resolve();
         }
     });
+}
+
+export async function createRoom(roomName, team) {
+    const $errorMsg = $createRoomMenu.querySelector(".error-msg");
+    const protocol = isDebugMode ? "http" : "https";
+    let response = null;
+
+    try {
+        response = await fetch(`${protocol}://${domain}/room`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                roomName,
+                userName: state.userName,
+                team,
+            })});
+    } catch(err) {
+        console.error("Error occurred while creating room. Reason: ", err);
+        $errorMsg.textContent = "Can't connect to server";
+        return;
+    }
+
+    if(response !== null && response.ok) {
+        startOnlineGame(team);
+    } else if(response !== null) {
+        $errorMsg.textContent = await response.text();
+    } else {
+        $errorMsg.textContent = "Something went wrong";
+    }
+}
+
+function shareStateWithServer() {
+    if(state.webSocketConn === null) return;
+
+    state.sharedState.userName = state.userName;
+    state.sharedState.team = state.mainPlayer.team;
+    state.sharedState.xPos = state.mainPlayer.xPos;
+    state.sharedState.yPos = state.mainPlayer.yPos;
+    state.sharedState.xVel = state.mainPlayer.xVel;
+    state.sharedState.yVel = state.mainPlayer.yVel;
+
+    state.webSocketConn.send(JSON.stringify(state.sharedState));
 }
 
 // utility
