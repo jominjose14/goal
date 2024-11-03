@@ -62,3 +62,13 @@ func doUserArrayOps() {
 		}
 	}
 }
+
+func (users *userArray) takeSnapshot() []*user {
+	users.mu.Lock()
+	defer users.mu.Unlock()
+
+	snapshot := make([]*user, len(users.slice))
+	copy(snapshot, users.slice)
+
+	return snapshot
+}

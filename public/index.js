@@ -1,5 +1,3 @@
-"use strict";
-
 import {
     $fpsDisplay,
     $pauseMenu,
@@ -11,25 +9,17 @@ import {
     $muteToggles,
     state,
     $canvas,
-    $message,
-    $scores,
-    $leftScore,
-    $rightScore,
     $rotateScreenPopup,
     $onlineMenu,
     $createRoomMenu,
-    $joinRoomMenu, $loadingSpinner, audioContext, buffers, masterGain
+    $joinRoomMenu, masterGain, playerColors
 } from "./scripts/global.js";
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {
-    closeModal, connectUsingUserName, createRoom, hide, isHandheldDevice, loadSound,
-    onMouseMove, onPauseUsingDoubleClick,
-    onPauseUsingKeyPress,
-    onResize,
-    onResume, onTouchMove, playSound,
-    resizeBoard, show, startLoading,
-    startOfflineGame, stopLoading
+    backToHomeScreen, closeModal, connectUsingUserName, createRoom, getRoomList, hide, isHandheldDevice,
+    loadSound, onMouseMove, onResize, onResume, onTouchMove, playSound, resizeBoard, show,
+    startLoading, startOfflineGame, stopLoading
 } from "./scripts/functions.js";
 
 // Call main
@@ -43,7 +33,7 @@ function main() {
 
     document.getElementById("difficulty-selector").textContent = state.difficulty;
 
-    state.mainPlayer = new Player("hsla(190, 100%, 50%, 1)", "left", "main");
+    state.mainPlayer = new Player(playerColors[0], "left", "main");
     state.puck = new Puck(0, 0, 20, "hsla(0, 0%, 100%, 1)");
 
     if(isHandheldDevice()) {
@@ -113,12 +103,10 @@ function attachEventListeners() {
         });
     }
 
-    $onlineMenu.querySelector(".create-room-menu-btn").onclick = onClickCreateRoomMenuBtn;
-    $onlineMenu.querySelector(".join-room-menu-btn").onclick = onClickJoinRoomMenuBtn;
+    $onlineMenu.querySelector(".host-menu-btn").onclick = onClickCreateRoomMenuBtn;
+    $onlineMenu.querySelector(".join-menu-btn").onclick = onClickJoinRoomMenuBtn;
     $createRoomMenu.querySelector(".create-room-btn").onclick = onClickCreateRoomBtn;
-    for(const joinRoomBtn of $joinRoomMenu.querySelectorAll(".join-room-btn")) {
-        joinRoomBtn.onclick = event => onClickJoinRoomBtn(event);
-    }
+    $joinRoomMenu.querySelector(".refresh-btn").onclick = getRoomList;
 
     $pauseMenu.querySelector(".resume-btn").onclick = onResume;
     $pauseMenu.querySelector(".exit-btn").onclick = (event) => backToHomeScreen(event.target);
@@ -211,27 +199,6 @@ function onChangeTheme() {
     state.theme = document.getElementById("theme-selector").textContent;
 }
 
-function backToHomeScreen($element) {
-    closeModal($element);
-    state.isPaused = false;
-
-    state.isGameOver = true;
-    state.allPlayers = [state.mainPlayer];
-    state.nonMainPlayers = [];
-
-    hide($canvas);
-    hide($pauseMenu);
-    hide($message);
-    hide($scores);
-    show($welcomeMenu);
-
-    document.removeEventListener("keypress", onPauseUsingKeyPress);
-    document.removeEventListener("dblclick", onPauseUsingDoubleClick);
-
-    $leftScore.textContent = "0";
-    $rightScore.textContent = "0";
-}
-
 async function onClickCreateRoomMenuBtn() {
     $onlineMenu.querySelector(".error-msg").textContent = "";
 
@@ -256,7 +223,10 @@ async function onClickJoinRoomMenuBtn() {
     if(state.webSocketConn === null) return;
 
     hide($onlineMenu);
+    $joinRoomMenu.querySelector(".error-msg").textContent = "";
     show($joinRoomMenu);
+
+    await getRoomList();
 }
 
 async function onClickCreateRoomBtn() {
@@ -270,10 +240,4 @@ async function onClickCreateRoomBtn() {
     startLoading();
     await createRoom(roomName, team);
     stopLoading();
-}
-
-async function onClickJoinRoomBtn(event) {
-    $joinRoomMenu.querySelector(".error-msg").textContent = "";
-
-    // TODO: Implement the rest
 }

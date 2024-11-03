@@ -15,11 +15,13 @@ func rootHandler(writer http.ResponseWriter, req *http.Request) {
 	http.Redirect(writer, req, "/public/index.html", http.StatusSeeOther)
 }
 
-type createUserPayload struct {
+type handshakeReqPayload struct {
+	Channel  string `json:"channel"`
 	UserName string `json:"userName"`
 }
 
-type createUserReplyPayload struct {
+type handshakeResPayload struct {
+	Channel   string `json:"channel"`
 	IsSuccess bool   `json:"isSuccess"`
 	Message   string `json:"message"`
 }
@@ -37,9 +39,14 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	defer conn.Close()
 	currUser = user{conn: conn}
 
-	var payload createUserPayload
+	var payload handshakeReqPayload
 	err = conn.ReadJSON(&payload)
 	if err != nil {
+		log.Println("[ERROR]", err)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	} else if payload.Channel != "handshake" {
+		err := errors.New("wrong channel used for handshake")
 		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
@@ -49,11 +56,11 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	err = users.add(&currUser)
 	if err != nil {
 		log.Println("[ERROR]", err)
-		conn.WriteJSON(createUserReplyPayload{IsSuccess: false, Message: err.Error()})
+		conn.WriteJSON(handshakeResPayload{Channel: "handshake", IsSuccess: false, Message: err.Error()})
 		return
 	}
 
-	conn.WriteJSON(createUserReplyPayload{IsSuccess: true, Message: fmt.Sprintf("Created user %s", currUser.name)})
+	conn.WriteJSON(handshakeResPayload{Channel: "handshake", IsSuccess: true, Message: fmt.Sprintf("Created user %s", currUser.name)})
 	log.Printf("[INFO] created user %s", currUser.name)
 
 	for {
@@ -71,31 +78,15 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 
 	// Cleanup after disconnection
 
-	// reassign room creator if currUser created a room
-	if currUser.room != nil && currUser.room.creator == &currUser && currUser.room.memberCount() > 1 {
-		firstMember, err := currUser.room.members.at(0)
-		if err != nil {
-			err = fmt.Errorf("failed to reassign creator to room %s while current creator disconnects. Reason: %v", currUser.room.name, err)
-			log.Println("[ERROR]", err)
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		currUser.room.creator = firstMember
-	}
-
-	// delete currUser from the room they joined
+	// delete user from their room
 	if currUser.room != nil {
-		currUser.room.members.deleteUsingName(currUser.name)
+		err = currUser.room.deleteMember(&currUser)
+		if err != nil {
+			log.Printf("[ERROR] Error while deleting user %s from room %s. Reason: %v\n", currUser.name, currUser.room.name, err)
+		}
 	}
 
-	// delete room if currUser was the only member
-	if currUser.room != nil && currUser.room.memberCount() == 0 {
-		close(currUser.room.stateChannel)
-		rooms.deleteUsingName(currUser.room.name)
-	}
-
-	// delete user
+	// delete user from server
 	_ = users.deleteUsingName(currUser.name)
 }
 
@@ -148,7 +139,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	// update user's team
 	userPtr.team = payload.Team
 
-	newRoom := room{name: payload.RoomName, creator: userPtr, members: &userArray{slice: make([]*user, 0, maxUsersPerRoom)}, stateChannel: make(chan *state)}
+	newRoom := room{name: payload.RoomName, host: userPtr, members: &userArray{slice: make([]*user, 0, maxUsersPerRoom)}, stateChannel: make(chan *state)}
 	err = newRoom.addMember(userPtr)
 	if err != nil {
 		log.Println("[ERROR]", err)
@@ -204,7 +195,7 @@ func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 }
 
 func listRoomsHandler(writer http.ResponseWriter, req *http.Request) {
-	roomList := rooms.namesSnapshot()
+	roomList := rooms.getJoinableRooms()
 	writer.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(writer).Encode(roomList)
 }

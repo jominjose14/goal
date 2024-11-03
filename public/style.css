@@ -29,6 +29,8 @@ body {
     justify-content: center;
     align-items: center;
     gap: 1vmin;
+    height: fit-content;
+    width: fit-content;
     background-color: hsla(0, 0%, 18%, 1);
     font-size: 2.5vmin;
     align-content: center;
@@ -145,11 +147,7 @@ body {
     padding-inline: 3em;
 }
 
-.menu.online, .menu.create-room {
-    input[type="text"] {
-        font-family: inherit;
-    }
-
+.menu.online, .menu.host, .menu.join {
     .error-msg {
         width: 12.33em;
         text-align: center;
@@ -160,11 +158,7 @@ body {
     }
 }
 
-.menu.create-room {
-    .field {
-        /*margin-bottom: 0.5em;*/
-    }
-
+.menu.host {
     .create-room-btn {
         margin-top: 1em;
     }
@@ -174,14 +168,64 @@ body {
     }
 }
 
+.menu.join {
+    .field {
+        max-height: 15vmin;
+        overflow-block: auto;
+
+        &::-webkit-scrollbar {
+            width: 0.125vmin;
+        }
+
+        .joinable-room {
+            display: flex;
+            align-items: center;
+            background-color: hsla(0, 0%, 100%, 0.05);
+            font-size: 1.1em;
+            border-radius: 0.4em;
+            width: 9em;
+            padding-block: 0.6em;
+            border: 1px solid hsla(0, 0%, 100%, 0.1);
+
+            .joinable-room-name {
+                justify-self: start;
+            }
+
+            .joinable-room-teams {
+                justify-self: end;
+
+                .joinable-room-team-btn {
+                    all: unset;
+                    cursor: pointer;
+                    display: grid;
+                    place-items: center;
+                    height: 4vmin;
+                    width: 4vmin;
+                    background-color: hsla(0, 0%, 100%, 0.05);
+                    border-radius: 0.45em;
+                    border: 1px solid hsla(0, 0%, 100%, 0.1);
+
+                    &:hover {
+                        background-color: hsla(0, 0%, 100%, 0.1);
+                    }
+                }
+
+                .joinable-room-team-btn[disabled] {
+                    &:hover {
+                        background-color: hsla(0, 0%, 100%, 0.05);
+                    }
+                }
+            }
+        }
+    }
+}
+
 #board {
     background-color: transparent;
     cursor: none;
 }
 
 .menu.pause {
-    height: fit-content;
-    width: fit-content;
     color: hsla(0, 0%, 100%, 1);
 
     &::backdrop {
@@ -292,8 +336,6 @@ body {
 }
 
 .rotate-screen {
-    height: fit-content;
-    width: fit-content;
     font-size: 5vmin;
     color: hsla(0, 0%, 100%, 1);
 
@@ -310,8 +352,6 @@ body {
 }
 
 .loading-spinner {
-    height: fit-content;
-    width: fit-content;
     background-color: transparent;
     border: none;
 
@@ -323,6 +363,18 @@ body {
         height: 10vmin;
         width: 10vmin;
         filter: invert(1);
+    }
+}
+
+.toast {
+    pointer-events: none;
+    position: absolute;
+    top: 5vmin;
+    right: 5vmin;
+
+    .toast-msg {
+        width: fit-content;
+        font-family: 'Trebuchet MS', sans-serif;
     }
 }
 

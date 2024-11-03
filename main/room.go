@@ -14,7 +14,7 @@ const maxUsersPerTeam = 2
 type room struct {
 	mu             sync.Mutex
 	name           string
-	creator        *user
+	host           *user
 	members        *userArray
 	leftTeamCount  int
 	rightTeamCount int
@@ -25,6 +25,12 @@ func (room *room) memberCount() int {
 	room.mu.Lock()
 	defer room.mu.Unlock()
 	return room.members.len()
+}
+
+func (room *room) getTeamCounts() (int, int) {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+	return room.leftTeamCount, room.rightTeamCount
 }
 
 func (room *room) addMember(userPtr *user) error {
@@ -55,36 +61,105 @@ func (room *room) addMember(userPtr *user) error {
 	return nil
 }
 
-func (room *room) deleteMember(name string, team string) error {
+func (room *room) deleteMember(leavingUser *user) error {
 	room.mu.Lock()
 	defer room.mu.Unlock()
 
-	err := room.members.deleteUsingName(name)
+	// delete leavingUser from room
+	err := room.members.deleteUsingName(leavingUser.name)
 	if err != nil {
 		return err
 	}
 
-	if team == "left" {
+	// update team count
+	if leavingUser.team == "left" {
 		room.leftTeamCount--
 	} else {
 		room.rightTeamCount--
 	}
 
+	// reassign host if leavingUser was their room's host
+	if room.host == leavingUser {
+		room.reassignHost(leavingUser)
+	}
+
+	// broadcast to all room members that leavingUser has left the room
+	room.broadcastMemberLeft(leavingUser)
+
+	// delete room if it became empty after deleting leavingUser
+	if len(room.members.slice) == 0 {
+		close(room.stateChannel)
+		rooms.deleteUsingName(room.name)
+	}
+
 	return nil
 }
 
-func broadcast(roomPtr *room) {
-	for currState := range roomPtr.stateChannel {
-		membersSnapshot := roomPtr.members.takeSnapshot()
-		if len(membersSnapshot) < 2 {
+type memberLeftPayload struct {
+	Channel  string `json:"channel"`
+	UserName string `json:"userName"`
+}
+
+// only call from within room.deleteMember() to ensure proper room locking
+func (room *room) broadcastMemberLeft(leavingUserPtr *user) {
+	if len(room.members.slice) == 0 {
+		return
+	}
+
+	payload := memberLeftPayload{Channel: "memberLeft", UserName: leavingUserPtr.name}
+
+	for _, userPtr := range room.members.slice {
+		err := userPtr.conn.WriteJSON(payload)
+		if err != nil {
+			log.Printf("[ERROR] error while communicating to user %s that user %s left room %s. Reason: %v\n", userPtr.name, leavingUserPtr.name, room.name, err)
+		}
+	}
+}
+
+type reassignHostPayload struct {
+	Channel string `json:"channel"`
+}
+
+// only call from within room.deleteMember() to ensure proper room locking
+func (room *room) reassignHost(leavingUserPtr *user) {
+	if len(room.members.slice) == 0 {
+		return
+	}
+
+	for _, userPtr := range room.members.slice {
+		payload := reassignHostPayload{Channel: "reassignHost"}
+		err := userPtr.conn.WriteJSON(payload)
+		if err != nil {
+			log.Printf("[ERROR] error while reassigning host of room %s from user %s to user %s. Reason: %v\n", room.name, leavingUserPtr.name, userPtr.name, err)
+		} else {
+			room.host = userPtr
+			break
+		}
+	}
+}
+
+func (room *room) consumeState() {
+	for currStatePtr := range room.stateChannel {
+		room.broadcast(currStatePtr)
+	}
+}
+
+func (room *room) broadcast(currState *state) {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	if len(room.members.slice) < 2 {
+		return
+	}
+
+	for _, userPtr := range room.members.slice {
+		if userPtr == room.host {
 			continue
 		}
 
-		for _, userPtr := range membersSnapshot {
-			err := userPtr.conn.WriteJSON(currState)
-			if err != nil {
-				log.Printf("[ERROR] error broadcasting state from user %s to user %s. Reason: %v\n", currState.UserName, userPtr.name, err)
-			}
+		err := userPtr.conn.WriteJSON(currState)
+		if err != nil {
+			log.Printf("[ERROR] error broadcasting state from user %s to user %s. Reason: %v\n", currState.UserName, userPtr.name, err)
 		}
 	}
 }
@@ -118,7 +193,7 @@ func (rooms *roomArray) add(newRoom *room) error {
 	}
 
 	rooms.slice = append(rooms.slice, newRoom)
-	go broadcast(newRoom)
+	go newRoom.consumeState()
 	return nil
 }
 
@@ -173,13 +248,25 @@ func (rooms *roomArray) deleteUsingName(roomName string) error {
 	return nil
 }
 
-func (rooms *roomArray) namesSnapshot() []string {
+type joinableRoom struct {
+	RoomName         string `json:"roomName"`
+	CanJoinLeftTeam  bool   `json:"canJoinLeftTeam"`
+	CanJoinRightTeam bool   `json:"canJoinRightTeam"`
+}
+
+func (rooms *roomArray) getJoinableRooms() []*joinableRoom {
 	rooms.mu.Lock()
 	defer rooms.mu.Unlock()
 
-	roomList := make([]string, len(rooms.slice))
-	for i, room := range rooms.slice {
-		roomList[i] = room.name
+	roomList := make([]*joinableRoom, 0, len(rooms.slice))
+	for _, room := range rooms.slice {
+		leftTeamCount, rightTeamCount := room.getTeamCounts()
+
+		if leftTeamCount == maxUsersPerTeam && rightTeamCount == maxUsersPerTeam {
+			continue
+		}
+
+		roomList = append(roomList, &joinableRoom{RoomName: room.name, CanJoinLeftTeam: leftTeamCount < maxUsersPerTeam, CanJoinRightTeam: rightTeamCount < maxUsersPerTeam})
 	}
 
 	return roomList

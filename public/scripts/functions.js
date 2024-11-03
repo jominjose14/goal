@@ -8,7 +8,7 @@ import {
     $onlineMenu,
     $pauseMenu,
     $rightScore,
-    $scores,
+    $scores, $toast,
     $welcomeMenu,
     audioContext,
     boardRinkFractionX,
@@ -16,9 +16,9 @@ import {
     domain,
     isDebugMode,
     masterGain,
-    maxUserNameLength,
-    millisecondsBetweenFrames,
-    state
+    maxUserNameLength, maxUsersPerRoom,
+    millisecondsBetweenFrames, playerColors,
+    state, toastDuration
 } from "./global.js";
 
 // game logic
@@ -29,7 +29,8 @@ function startRefreshingCanvas() {
 }
 
 function refreshCanvas() {
-    if (!state.isGameOver && !state.isPaused) requestAnimationFrame(refreshCanvas);
+    if (!state.isGameOver && (state.isOnlineGame || !state.isPaused)) requestAnimationFrame(refreshCanvas);
+    if(state.isOnlineGame && state.nonMainPlayers.length === 0) return; // do nothing if room creator is alone on board
     if (!state.isGoal) updateStuckPuckMetrics();
 
     const now = window.performance.now();
@@ -41,7 +42,7 @@ function refreshCanvas() {
 
     // frame render logic
     state.context.clearRect(0, 0, $canvas.width, $canvas.height);
-    state.puck.update();
+    if(!state.isOnlineGame || (state.isOnlineGame && state.isHost)) state.puck.update(); // update puck only if it is (an offline game) OR (if it is an online game, provided mainPlayer is the host): because if mainPlayer is not host, puck must be updated via state received via web socket connection
 
     for (const player of state.allPlayers) {
         player.update();
@@ -49,10 +50,7 @@ function refreshCanvas() {
 
     redrawVerticalRinkLines();
 
-    if(state.isOnlineGame) {
-        shareStateWithServer(); // TODO: handle sudden loss of connection
-        // TODO: create function to update all other players on board
-    }
+    if(state.isOnlineGame) sendStateToServer();
 
     if(isDebugMode) {
         state.fpsMetrics.canvasFpsCounter++;
@@ -108,6 +106,7 @@ function logForDebug() {
 }
 
 export function startOfflineGame() {
+    state.isOnlineGame = false;
     state.isPaused = false;
 
     hide($welcomeMenu);
@@ -118,12 +117,15 @@ export function startOfflineGame() {
     document.addEventListener("keypress", event => onPauseUsingKeyPress(event));
     document.addEventListener("dblclick", onPauseUsingDoubleClick);
 
-    const aiPlayer = new Player("hsla(120, 100%, 50%, 1)", "right", "ai");
+    state.mainPlayer.team = "left";
+    state.mainPlayer.reset();
+    const aiPlayer = new Player(playerColors[1], "right", "ai");
     aiPlayer.reset();
     newRound();
 }
 
 export function startOnlineGame(mainPlayerTeam) {
+    state.isOnlineGame = true;
     state.isPaused = false;
 
     hide($createRoomMenu);
@@ -136,6 +138,85 @@ export function startOnlineGame(mainPlayerTeam) {
     document.addEventListener("dblclick", onPauseUsingDoubleClick);
 
     state.mainPlayer.team = mainPlayerTeam;
+
+    state.webSocketConn.onmessage((event) => {
+        const payload = JSON.parse(event.data);
+
+        switch(payload.channel) {
+            case "memberLeft": {
+                if(isDebugMode) console.log("Received web socket message on 'memberLeft' channel");
+
+                let playerThatLeft = null;
+                for(const player of state.nonMainPlayers) {
+                    if(player.name !== payload.userName) continue;
+                    playerThatLeft = player;
+                    break;
+                }
+
+                if(playerThatLeft !== null) {
+                    state.nonMainPlayers.remove(playerThatLeft);
+                    state.allPlayers.remove(playerThatLeft);
+                    showToast(`Player ${playerThatLeft.name} left the room`);
+                }
+            }
+            break;
+
+            case "reassignHost": {
+                state.isHost = true;
+            }
+            break;
+
+            case "state": {
+                if(isDebugMode) console.log("Received web socket message on 'state' channel");
+
+                let found = false;
+                for(const player of state.nonMainPlayers) {
+                    if(player.name !== payload.userName) continue;
+
+                    found = true;
+
+                    player.xPos = payload.playerXPos * $canvas.width;
+                    player.yPos = payload.playerYPos * $canvas.height;
+
+                    if(!state.isHost) {
+                        state.puck.xPos = payload.puckXPos * $canvas.width;
+                        state.puck.yPos = payload.puckYPos * $canvas.height;
+                        $leftScore.textContent = payload.leftScore.toString();
+                        $rightScore.textContent = payload.rightScore.toString();
+                    }
+
+                    break;
+                }
+
+                if(!found) {
+                    if(state.allPlayers.length === 4) {
+                        console.error(`Server is trying to add a new player when room is full; current room count is ${maxUsersPerRoom}`);
+                        return;
+                    }
+                    const newPlayerColor = state.allPlayers.length === 2 ? playerColors[2] : playerColors[3]; // TODO: extend code for when 4 < maxUsersPerRoom
+                    const newPlayer = new Player(newPlayerColor, payload.team, "remote");
+                    state.nonMainPlayers.push(newPlayer);
+                    state.allPlayers.push(newPlayer);
+                }
+            }
+            break;
+
+            default: {
+                if(isDebugMode) console.error(`Received web socket message from invalid channel named ${payload.channel}`);
+            }
+        }
+    });
+
+    state.webSocketConn.onerror((error) => {
+        if(isDebugMode) console.error("Error during web socket communication. Reason: ", error);
+        state.webSocketConn.close();
+    });
+
+    state.webSocketConn.onclose(() => {
+        if(isDebugMode) console.log("Web socket connection closed");
+        backToHomeScreen(undefined);
+    });
+
     newRound();
 }
 
@@ -263,6 +344,48 @@ export function resizeBoard() {
 }
 
 // event handlers
+export function backToHomeScreen($element) {
+    if(state.isOnlineGame) {
+        if($element === undefined) showToast("Lost connection"); // user did not click pause menu's exit; user lost their connection
+        state.webSocketConn = null;
+        state.userName = null;
+        state.mainPlayer.team = "left";
+        state.isOnlineGame = false;
+        state.isHost = false;
+    }
+
+    // close pause menu
+    closeModal($pauseMenu);
+    state.isPaused = false;
+
+    // reset
+    state.isGameOver = true;
+    state.allPlayers = [state.mainPlayer];
+    state.nonMainPlayers = [];
+
+    document.removeEventListener("keypress", onPauseUsingKeyPress);
+    document.removeEventListener("dblclick", onPauseUsingDoubleClick);
+
+    $leftScore.textContent = "0";
+    $rightScore.textContent = "0";
+
+    hide($canvas);
+    hide($pauseMenu);
+    hide($message);
+    hide($scores);
+    show($welcomeMenu);
+}
+
+async function onClickJoinRoomBtn(event) {
+    const $btn = event.target;
+    const roomName = $btn.dataset.roomName;
+    const team = $btn.dataset.team;
+
+    startLoading();
+    await joinRoom(roomName, team);
+    stopLoading();
+}
+
 export function closeModal($element) {
     $element.closest("dialog").close();
 }
@@ -332,6 +455,7 @@ export function connectUsingUserName() {
 
         const $userNameTxtInput = document.getElementById("user-name");
         const $errorMsg = $onlineMenu.querySelector(".error-msg");
+        $errorMsg.textContent = "";
 
         if($userNameTxtInput.value === "") {
             $errorMsg.textContent = "User name cannot be empty";
@@ -351,35 +475,43 @@ export function connectUsingUserName() {
 
         state.webSocketConn.onopen = () => {
             if(isDebugMode) console.log("Web socket connection established");
-            state.webSocketConn.send(JSON.stringify({userName: $userNameTxtInput.value.trim()}));
+            state.webSocketConn.send(JSON.stringify({
+                channel: "handshake",
+                userName: $userNameTxtInput.value.trim(),
+            }));
         }
 
         state.webSocketConn.onmessage = (event) => {
-            if(isDebugMode) console.log("Received message from server via web socket");
+            if(isDebugMode) console.log("Received web socket message");
+
             const payload = JSON.parse(event.data);
+            if(payload.channel !== "handshake") {
+                if(isDebugMode) console.error("Received web socket message from invalid channel during handshake");
+                state.webSocketConn.close();
+                return;
+            }
+
             if(payload.isSuccess) {
                 state.userName = $userNameTxtInput.value.trim();
                 resolve();
+                return;
             } else {
                 payload.message = payload.message[0].toUpperCase() + payload.message.substring(1);
                 $errorMsg.textContent = payload.message;
-                state.webSocketConn = null;
-                state.userName = null;
-                resolve();
+                state.webSocketConn.close();
+                return;
             }
         }
 
         if(state.webSocketConn !== null) state.webSocketConn.onerror = () => {
-            if(isDebugMode) console.log("Error during web socket communication");
-            $errorMsg.textContent = "Error during communication with server";
-            state.webSocketConn = null;
-            state.userName = null;
-            resolve();
+            if(isDebugMode) console.error("Error during web socket communication");
+            $errorMsg.textContent = "Error while communicating with server";
+            state.webSocketConn.close();
         }
 
         if(state.webSocketConn !== null) state.webSocketConn.onclose = () => {
             if(isDebugMode) console.log("Web socket connection closed");
-            $errorMsg.textContent = "Can't connect to server";
+            if($errorMsg.textContent === "") $errorMsg.textContent = "Can't connect to server";
             state.webSocketConn = null;
             state.userName = null;
             resolve();
@@ -410,6 +542,7 @@ export async function createRoom(roomName, team) {
     }
 
     if(response !== null && response.ok) {
+        state.isHost = true;
         startOnlineGame(team);
     } else if(response !== null) {
         $errorMsg.textContent = await response.text();
@@ -418,17 +551,108 @@ export async function createRoom(roomName, team) {
     }
 }
 
-function shareStateWithServer() {
-    if(state.webSocketConn === null) return;
+export async function getRoomList() {
+    const $errorMsg = $joinRoomMenu.querySelector(".error-msg");
+    const protocol = isDebugMode ? "http" : "https";
+    let response = null;
 
-    state.sharedState.userName = state.userName;
-    state.sharedState.team = state.mainPlayer.team;
-    state.sharedState.xPos = state.mainPlayer.xPos;
-    state.sharedState.yPos = state.mainPlayer.yPos;
-    state.sharedState.xVel = state.mainPlayer.xVel;
-    state.sharedState.yVel = state.mainPlayer.yVel;
+    try {
+        startLoading();
+        response = await fetch(`${protocol}://${domain}/rooms`);
+    } catch(err) {
+        console.error("Failed to fetch joinable rooms list. Reason: ", err);
+        $errorMsg.textContent = "Failed to fetch rooms";
+        stopLoading();
+        return;
+    }
 
-    state.webSocketConn.send(JSON.stringify(state.sharedState));
+    if(response !== null && response.ok) {
+        const roomList = await response.json();
+        if(roomList.length === 0) {
+            $errorMsg.textContent = "No rooms available";
+            return;
+        }
+
+        $errorMsg.textContent = "";
+        const $joinableRoomList = $joinRoomMenu.querySelector(".joinable-room-list");
+        const $joinableRoomTemplate = document.getElementById("joinable-room-template");
+
+        $joinableRoomList.innerHTML = "";
+        for(const room of roomList) {
+            const $room = $joinableRoomTemplate.content.cloneNode(true);
+            $room.querySelector(".joinable-room-name").textContent = room.roomName;
+
+            const $leftTeamBtn = $room.querySelector(".joinable-room-team-btn[data-team='left']");
+            $leftTeamBtn.dataset.roomName = room.roomName;
+            $leftTeamBtn.disabled = room.canJoinLeftTeam;
+            if(room.canJoinLeftTeam) $leftTeamBtn.onclick = (event) => onClickJoinRoomBtn(event);
+
+            const $rightTeamBtn = $room.querySelector(".joinable-room-team-btn[data-team='right']");
+            $rightTeamBtn.dataset.roomName = room.roomName;
+            $rightTeamBtn.disabled = room.canJoinRightTeam;
+            if(room.canJoinRightTeam) $rightTeamBtn.onclick = (event) => onClickJoinRoomBtn(event);
+
+            $joinableRoomList.appendChild($room);
+        }
+    } else {
+        $errorMsg.textContent = "Something went wrong";
+    }
+
+    stopLoading();
+}
+
+async function joinRoom(roomName, team) {
+    const $errorMsg = $joinRoomMenu.querySelector(".error-msg");
+    $errorMsg.textContent = "";
+    const protocol = isDebugMode ? "http" : "https";
+    let response = null;
+
+    try {
+        response = await fetch(`${protocol}://${domain}/join`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                roomName,
+                userName: state.userName,
+                team,
+            })});
+    } catch(err) {
+        console.error("Error occurred while joining room. Reason: ", err);
+        $errorMsg.textContent = "Can't connect to server";
+        return;
+    }
+
+    if(response !== null && response.ok) {
+        state.isHost = false;
+        startOnlineGame(team);
+    } else if(response !== null) {
+        $errorMsg.textContent = await response.text();
+    } else {
+        $errorMsg.textContent = "Something went wrong";
+    }
+}
+
+function sendStateToServer() {
+    if(state.webSocketConn === null) {
+        if(isDebugMode) console.error("Cannot send state to server as web socket connection does not exist");
+        return;
+    }
+
+    state.onlineState.userName = state.userName;
+    state.onlineState.team = state.mainPlayer.team;
+    state.onlineState.playerXPos = state.mainPlayer.xPos / $canvas.width;
+    state.onlineState.playerYPos = state.mainPlayer.yPos / $canvas.height;
+
+    if(state.isHost) {
+        state.onlineState.puckXPos = state.puck.xVel / $canvas.width;
+        state.onlineState.puckYPos = state.puck.yVel / $canvas.height;
+        state.onlineState.leftScore = isNaN($leftScore.textContent) ? 0 : Math.floor(clamp(0, Number($leftScore.textContent), 999));
+        state.onlineState.rightScore = isNaN($rightScore.textContent) ? 0 : Math.floor(clamp(0, Number($rightScore.textContent), 999));
+    }
+
+    state.webSocketConn.send(JSON.stringify(state.onlineState));
 }
 
 // utility
@@ -466,4 +690,13 @@ export function startLoading() {
 export function stopLoading() {
     hide($loadingSpinner);
     $loadingSpinner.close();
+}
+
+export function showToast(msg) {
+    clearTimeout(state.toastTimeoutId);
+    hide($toast);
+    $toast.querySelector(".toast-msg").textContent = msg;
+    $toast.style.right -= $toast.width;
+    show($toast);
+    state.toastTimeoutId = setTimeout(() => hide($toast), toastDuration);
 }

@@ -106,16 +106,6 @@ func (users *userArray) deleteUsingName(userName string) error {
 	return nil
 }
 
-func (users *userArray) takeSnapshot() []*user {
-	users.mu.Lock()
-	defer users.mu.Unlock()
-
-	snapshot := make([]*user, len(users.slice))
-	copy(snapshot, users.slice)
-
-	return snapshot
-}
-
 // util functions: not meant to be used outside this file
 func validateUserName(userName string) error {
 	if userName == "" {

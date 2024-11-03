@@ -1,14 +1,19 @@
-// constants
+// == Constants ==
 export const isDebugMode = true;
 
+// online
 export const domain = isDebugMode ? "127.0.0.1:8080" : "myDomain";
 export const maxUserNameLength = 25;
+export const maxUsersPerRoom = 4;
+export const maxUsersPerTeam = 2;
+export const webSocketChannels = ["handshake", "memberLeft", "reassignHost", "state"];
 
+// html elements
 export const $welcomeMenu = document.querySelector(".menu.welcome");
 export const $settingsMenu = document.querySelector(".menu.settings");
 export const $onlineMenu = document.querySelector(".menu.online");
-export const $createRoomMenu = document.querySelector(".menu.create-room");
-export const $joinRoomMenu = document.querySelector(".menu.join-room");
+export const $createRoomMenu = document.querySelector(".menu.host");
+export const $joinRoomMenu = document.querySelector(".menu.join");
 export const $rotateScreenPopup = document.querySelector(".menu.rotate-screen");
 export const $pauseMenu = document.querySelector(".menu.pause");
 export const $message = document.querySelector(".message");
@@ -19,13 +24,17 @@ export const $muteToggles = [document.querySelector(".menu.welcome .mute-toggle-
 export const $fullscreenToggles = [document.querySelector(".menu.welcome .fullscreen-toggle-btn"), document.querySelector(".menu.pause .fullscreen-toggle-btn")];
 export const $fpsDisplay = document.querySelector(".fps-display");
 export const $loadingSpinner = document.querySelector(".loading-spinner")
+export const $toast = document.querySelector(".toast")
 export const $canvas = document.getElementById("board");
 
+// graphics
 export const boardRinkFractionX = 0.008; // for 16:9 aspect ratio
 export const boardRinkFractionY = 0.014; // for 16:9 aspect ratio
 export const puckRadiusFraction = 0.015; // TODO: make this ratio editable in settings
 export const playerRadiusFraction = 0.0225 // TODO: make this ratio editable in settings;
+export const playerColors = ["hsla(190, 100%, 50%, 1)", "hsla(120, 100%, 50%, 1)", "hsla(65, 100%, 50%, 1)", "hsla(35, 100%, 50%, 1)"];
 
+// config
 export const fps = 60;
 export const millisecondsBetweenFrames = 1000 / fps;
 export const xPuckMaxVelDividend = 3 * (fps/60) * 16; // TODO: handle for non 16:9 aspect ratios
@@ -36,6 +45,7 @@ export const mainPlayerVelMultiplier = 2.5;
 export const aiPlayerAccel = 2.5;
 export const stuckPuckMaxDuration = 10; // measured in seconds
 export const puckPlayerCollisionCooldown = 250; // measured in milliseconds
+export const toastDuration = 3000; // measured in milliseconds
 
 // sounds
 export const audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -50,20 +60,24 @@ export const soundUrls = {
     goal: "audio/goal.mp3",
 };
 
-// state
+// == State ==
 export const state = {
     // == Online ==
-    sharedState: {
+    onlineState: {
+        channel: "state",
         userName: "",
         team: "",
-        xPos: 0,
-        yPos: 0,
-        xVel: 0,
-        yVel: 0,
+        playerXPos: 0,
+        playerYPos: 0,
+        puckXPos: 0,
+        puckYPos: 0,
+        leftScore: 0,
+        rightScore: 0,
     },
     webSocketConn: null,
     userName: null,
     isOnlineGame: false,
+    isHost: false,
     // == Offline ==
     // canvas
     context: $canvas.getContext('2d'),
@@ -94,4 +108,5 @@ export const state = {
     difficulty: "Medium",
     playersPerTeam: "One",
     theme: "Dark",
+    toastTimeoutId: -1,
 };

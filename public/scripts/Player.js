@@ -9,6 +9,7 @@ import {
 import {clamp} from "./functions.js";
 
 export default class Player {
+    #name;
     #radius;
     #color;
     #team;
@@ -53,8 +54,16 @@ export default class Player {
         return this.#team;
     }
 
+    get name() {
+        return this.#name;
+    }
+
     set team(team) {
         this.#team = team;
+    }
+
+    set name(name) {
+        this.#name = name;
     }
 
     set xPos(xPos) {
@@ -267,6 +276,9 @@ export default class Player {
                 }
             }
         }
+
+        // player of type="main" (mainPlayer) is updated by updatePosViaUserInput()
+        // player of type="remote" is updated using payload received via web socket connection
 
         this.draw();
     }

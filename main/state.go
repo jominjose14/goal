@@ -1,10 +1,13 @@
 package main
 
 type state struct {
-	UserName string  `json:"userName"`
-	Team     string  `json:"team"`
-	XPos     float64 `json:"xPos"`
-	YPos     float64 `json:"yPos"`
-	XVel     float64 `json:"xVel"`
-	YVel     float64 `json:"yVel"`
+	Channel    string  `json:"channel"`
+	UserName   string  `json:"userName"`
+	Team       string  `json:"team"`
+	PlayerXPos float64 `json:"playerXPos"`
+	PlayerYPos float64 `json:"playerYPos"`
+	PuckXPos   float64 `json:"puckXPos"`
+	PuckYPos   float64 `json:"puckYPos"`
+	LeftScore  int     `json:"leftScore"`
+	RightScore int     `json:"rightScore"`
 }
