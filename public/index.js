@@ -17,7 +17,7 @@ import {
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {
-    backToHomeScreen, closeModal, connectUsingUserName, createRoom, getRoomList, hide, isHandheldDevice,
+    exitGame, closeModal, connectUsingUserName, createRoom, resetPostDisconnect, getRoomList, hide, isHandheldDevice,
     loadSound, onMouseMove, onResize, onResume, onTouchMove, playSound, resizeBoard, show,
     startLoading, startOfflineGame, stopLoading
 } from "./scripts/functions.js";
@@ -86,8 +86,8 @@ function attachEventListeners() {
     const $settingsBtn = document.querySelector(".settings-btn");
     $settingsBtn.onclick = openSettings;
 
-    for(const $backBtn of document.querySelectorAll('.menu .back-btn')) {
-        $backBtn.onclick = (event) => handleBack(event.target);
+    for(const $backBtn of document.querySelectorAll('.menu .home-btn')) {
+        $backBtn.onclick = (event) => onClickHomeBtn(event.target);
     }
 
     for(const $selector of document.querySelectorAll('.menu .selector')) {
@@ -109,7 +109,7 @@ function attachEventListeners() {
     $joinRoomMenu.querySelector(".refresh-btn").onclick = getRoomList;
 
     $pauseMenu.querySelector(".resume-btn").onclick = onResume;
-    $pauseMenu.querySelector(".exit-btn").onclick = (event) => backToHomeScreen(event.target);
+    $pauseMenu.querySelector(".exit-btn").onclick = (event) => exitGame(event.target);
 }
 
 function onClickOnlineGameBtn() {
@@ -156,9 +156,14 @@ function openSettings() {
     show($settingsMenu);
 }
 
-function handleBack($element) {
-    const $parent = $element.parentNode;
-    hide($parent);
+function onClickHomeBtn($element) {
+    if(state.webSocketConn !== null) {
+        state.webSocketConn.close();
+        resetPostDisconnect();
+    }
+
+    const $currMenu = $element.closest(".menu");
+    hide($currMenu);
     show($welcomeMenu);
 }
 
@@ -230,7 +235,8 @@ async function onClickJoinRoomMenuBtn() {
 }
 
 async function onClickCreateRoomBtn() {
-    $createRoomMenu.querySelector(".error-msg").textContent = "";
+    const $errorMsg = $createRoomMenu.querySelector(".error-msg");
+    $errorMsg.textContent = "";
 
     const $roomNameTxtInput = document.getElementById("room-name");
     const roomName = $roomNameTxtInput.value.trim();

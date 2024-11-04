@@ -89,6 +89,7 @@ func (users *userArray) deleteUsingIdx(idx int) error {
 
 	users.slice[idx] = users.slice[len(users.slice)-1]
 	users.slice = users.slice[:len(users.slice)-1]
+
 	return nil
 }
 
@@ -103,6 +104,7 @@ func (users *userArray) deleteUsingName(userName string) error {
 
 	users.slice[idx] = users.slice[len(users.slice)-1]
 	users.slice = users.slice[:len(users.slice)-1]
+
 	return nil
 }
 

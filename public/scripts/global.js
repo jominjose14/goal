@@ -2,8 +2,9 @@
 export const isDebugMode = true;
 
 // online
-export const domain = isDebugMode ? "127.0.0.1:8080" : "myDomain";
+export const domain = (new URL(window.location.href)).host;
 export const maxUserNameLength = 25;
+export const maxRoomNameLength = 25;
 export const maxUsersPerRoom = 4;
 export const maxUsersPerTeam = 2;
 export const webSocketChannels = ["handshake", "memberLeft", "reassignHost", "state"];

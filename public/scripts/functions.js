@@ -15,7 +15,7 @@ import {
     buffers,
     domain,
     isDebugMode,
-    masterGain,
+    masterGain, maxRoomNameLength,
     maxUserNameLength, maxUsersPerRoom,
     millisecondsBetweenFrames, playerColors,
     state, toastDuration
@@ -30,7 +30,7 @@ function startRefreshingCanvas() {
 
 function refreshCanvas() {
     if (!state.isGameOver && (state.isOnlineGame || !state.isPaused)) requestAnimationFrame(refreshCanvas);
-    if(state.isOnlineGame && state.nonMainPlayers.length === 0) return; // do nothing if room creator is alone on board
+
     if (!state.isGoal) updateStuckPuckMetrics();
 
     const now = window.performance.now();
@@ -40,14 +40,18 @@ function refreshCanvas() {
     // if we reach here, we are rendering a new frame
     state.fpsMetrics.prevFrameTimestamp = now - timeElapsedSincePrevFrame % millisecondsBetweenFrames; // the modulo op is an adjustment in case millisecondsBetweenFrames is not a multiple of screen's built-in millisecondsBetweenFrames (for 60Hz it is 1000/60 = 16.7ms)
 
-    // frame render logic
+    // clear canvas
     state.context.clearRect(0, 0, $canvas.width, $canvas.height);
-    if(!state.isOnlineGame || (state.isOnlineGame && state.isHost)) state.puck.update(); // update puck only if it is (an offline game) OR (if it is an online game, provided mainPlayer is the host): because if mainPlayer is not host, puck must be updated via state received via web socket connection
 
-    for (const player of state.allPlayers) {
-        player.update();
+    // don't start game if host is alone on board
+    if(state.nonMainPlayers.length === 0) {
+        drawTextAtCanvasCenter("Waiting for other players to join");
+        return;
     }
 
+    // frame render logic
+    if(!state.isOnlineGame || (state.isOnlineGame && state.isHost)) state.puck.update(); // update puck only if it is (an offline game) OR (if it is an online game, provided mainPlayer is the host): because if mainPlayer is not host, puck must be updated via state received via web socket connection
+    for (const player of state.allPlayers) player.update();
     redrawVerticalRinkLines();
 
     if(state.isOnlineGame) sendStateToServer();
@@ -139,7 +143,7 @@ export function startOnlineGame(mainPlayerTeam) {
 
     state.mainPlayer.team = mainPlayerTeam;
 
-    state.webSocketConn.onmessage((event) => {
+    state.webSocketConn.onmessage = (event) => {
         const payload = JSON.parse(event.data);
 
         switch(payload.channel) {
@@ -205,17 +209,17 @@ export function startOnlineGame(mainPlayerTeam) {
                 if(isDebugMode) console.error(`Received web socket message from invalid channel named ${payload.channel}`);
             }
         }
-    });
+    };
 
-    state.webSocketConn.onerror((error) => {
+    state.webSocketConn.onerror = (error) => {
         if(isDebugMode) console.error("Error during web socket communication. Reason: ", error);
         state.webSocketConn.close();
-    });
+    };
 
-    state.webSocketConn.onclose(() => {
+    state.webSocketConn.onclose = () => {
         if(isDebugMode) console.log("Web socket connection closed");
-        backToHomeScreen(undefined);
-    });
+        exitGame(undefined);
+    };
 
     newRound();
 }
@@ -344,14 +348,11 @@ export function resizeBoard() {
 }
 
 // event handlers
-export function backToHomeScreen($element) {
+export function exitGame($element) {
     if(state.isOnlineGame) {
-        if($element === undefined) showToast("Lost connection"); // user did not click pause menu's exit; user lost their connection
-        state.webSocketConn = null;
-        state.userName = null;
-        state.mainPlayer.team = "left";
-        state.isOnlineGame = false;
-        state.isHost = false;
+        if($element === undefined) showToast("Lost connection"); // if $element is undefined, user did not click pause menu's exit, which means that user lost connection
+        state.webSocketConn.close();
+        resetPostDisconnect();
     }
 
     // close pause menu
@@ -459,14 +460,12 @@ export function connectUsingUserName() {
 
         if($userNameTxtInput.value === "") {
             $errorMsg.textContent = "User name cannot be empty";
-            state.webSocketConn = null;
-            state.userName = null;
+            resetPostDisconnect();
             resolve();
             return;
         } else if(maxUserNameLength < $userNameTxtInput.value.length) {
             $errorMsg.textContent = `User name cannot be more than ${maxUserNameLength} characters`;
-            state.webSocketConn = null;
-            state.userName = null;
+            resetPostDisconnect();
             resolve();
             return;
         }
@@ -493,11 +492,11 @@ export function connectUsingUserName() {
 
             if(payload.isSuccess) {
                 state.userName = $userNameTxtInput.value.trim();
+                state.webSocketConn.onmessage = null;
                 resolve();
                 return;
             } else {
-                payload.message = payload.message[0].toUpperCase() + payload.message.substring(1);
-                $errorMsg.textContent = payload.message;
+                $errorMsg.textContent = capitalizeFirstLetter(payload.message);
                 state.webSocketConn.close();
                 return;
             }
@@ -512,8 +511,7 @@ export function connectUsingUserName() {
         if(state.webSocketConn !== null) state.webSocketConn.onclose = () => {
             if(isDebugMode) console.log("Web socket connection closed");
             if($errorMsg.textContent === "") $errorMsg.textContent = "Can't connect to server";
-            state.webSocketConn = null;
-            state.userName = null;
+            resetPostDisconnect();
             resolve();
         }
     });
@@ -523,6 +521,14 @@ export async function createRoom(roomName, team) {
     const $errorMsg = $createRoomMenu.querySelector(".error-msg");
     const protocol = isDebugMode ? "http" : "https";
     let response = null;
+
+    if(roomName === "") {
+        $errorMsg.textContent = "Room name cannot be empty";
+        return;
+    } else if(maxRoomNameLength < roomName.length) {
+        $errorMsg.textContent = `Room name cannot be more than ${maxRoomNameLength} characters`;
+        return;
+    }
 
     try {
         response = await fetch(`${protocol}://${domain}/room`, {
@@ -545,7 +551,8 @@ export async function createRoom(roomName, team) {
         state.isHost = true;
         startOnlineGame(team);
     } else if(response !== null) {
-        $errorMsg.textContent = await response.text();
+        const serverErrorMsg = await response.text();
+        $errorMsg.textContent = capitalizeFirstLetter(serverErrorMsg);
     } else {
         $errorMsg.textContent = "Something went wrong";
     }
@@ -584,12 +591,12 @@ export async function getRoomList() {
 
             const $leftTeamBtn = $room.querySelector(".joinable-room-team-btn[data-team='left']");
             $leftTeamBtn.dataset.roomName = room.roomName;
-            $leftTeamBtn.disabled = room.canJoinLeftTeam;
+            if(!room.canJoinLeftTeam) $leftTeamBtn.disabled = true;
             if(room.canJoinLeftTeam) $leftTeamBtn.onclick = (event) => onClickJoinRoomBtn(event);
 
             const $rightTeamBtn = $room.querySelector(".joinable-room-team-btn[data-team='right']");
             $rightTeamBtn.dataset.roomName = room.roomName;
-            $rightTeamBtn.disabled = room.canJoinRightTeam;
+            if(!room.canJoinRightTeam) $rightTeamBtn.disabled = true;
             if(room.canJoinRightTeam) $rightTeamBtn.onclick = (event) => onClickJoinRoomBtn(event);
 
             $joinableRoomList.appendChild($room);
@@ -655,7 +662,48 @@ function sendStateToServer() {
     state.webSocketConn.send(JSON.stringify(state.onlineState));
 }
 
+export function resetPostDisconnect() {
+    state.webSocketConn = null;
+    state.userName = null;
+    state.mainPlayer.team = "left";
+    state.isOnlineGame = false;
+    state.isHost = false;
+}
+
 // utility
+export function drawTextAtCanvasCenter(text) {
+    const ctx = state.context;
+    const padding = 0.02 * $canvas.height;
+    const fontSize = 0.04 * $canvas.height;
+
+    ctx.font = `${fontSize}px 'Trebuchet MS', sans-serif`;
+    const textWidth = ctx.measureText(text).width;
+    const textHeight = fontSize;
+    const textX = ($canvas.width - textWidth) / 2;
+    const textY = ($canvas.height + textHeight - padding) / 2;
+
+    const boxX = ($canvas.width - textWidth) / 2 - padding;
+    const boxY = ($canvas.height - textHeight) /2 - padding;
+    const boxWidth = textWidth + 2 * padding;
+    const boxHeight = textHeight + 2 * padding;
+    const boxBorderRadius = 0.01 * $canvas.height;
+
+    // draw underlying box
+    ctx.fillStyle = "hsla(0, 0%, 100%, 0.1)"; // box fill color
+    ctx.beginPath();
+    ctx.moveTo(boxX + boxBorderRadius, boxY);
+    ctx.arcTo(boxX + boxWidth, boxY, boxX + boxWidth, boxY + boxHeight, boxBorderRadius);
+    ctx.arcTo(boxX + boxWidth, boxY + boxHeight, boxX, boxY + boxHeight, boxBorderRadius);
+    ctx.arcTo(boxX, boxY + boxHeight, boxX, boxY, boxBorderRadius);
+    ctx.arcTo(boxX, boxY, boxX + boxWidth, boxY, boxBorderRadius);
+    ctx.closePath();
+    ctx.fill();
+
+    // draw text over box
+    ctx.fillStyle = "hsla(0, 0%, 100%, 0.25)"; // text fill color
+    ctx.fillText(text, textX, textY);
+}
+
 export function playSound(name, shouldLoop) {
     const source = audioContext.createBufferSource();
     source.loop = shouldLoop;
@@ -699,4 +747,8 @@ export function showToast(msg) {
     $toast.style.right -= $toast.width;
     show($toast);
     state.toastTimeoutId = setTimeout(() => hide($toast), toastDuration);
+}
+
+export function capitalizeFirstLetter(str) {
+    return str[0].toUpperCase() + str.substring(1);
 }

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -27,18 +29,32 @@ type handshakeResPayload struct {
 }
 
 func createUserHandler(writer http.ResponseWriter, req *http.Request) {
-	var currUser user
+	currUser := user{}
 
+	// set up web socket connection
 	conn, err := upgrader.Upgrade(writer, req, nil)
 	if err != nil {
-		log.Println("[ERROR] Error upgrading to WebSocket: ", err)
+		log.Println("[ERROR] Error upgrading to WebSocket:", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	defer conn.Close()
-	currUser = user{conn: conn}
+	conn.SetCloseHandler(func(code int, text string) error {
+		logMsg := fmt.Sprintf("WebSocket closed with code %d", code)
+		if text != "" {
+			logMsg += ": " + text
+		}
+		log.Println(logMsg)
+		cleanupPostDisconnect(&currUser)
+		return nil
+	})
 
+	defer conn.Close()
+
+	// associate web socket connection with current user
+	currUser.conn = conn
+
+	// perform handshake (receive userName, validate, register, respond with success if no error)
 	var payload handshakeReqPayload
 	err = conn.ReadJSON(&payload)
 	if err != nil {
@@ -63,24 +79,30 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	conn.WriteJSON(handshakeResPayload{Channel: "handshake", IsSuccess: true, Message: fmt.Sprintf("Created user %s", currUser.name)})
 	log.Printf("[INFO] created user %s", currUser.name)
 
+	// start receiving state from user
 	for {
 		var newState state
 		err := conn.ReadJSON(newState)
 		if err != nil {
-			log.Println("[ERROR]", "Error reading message:", err)
+			log.Println("[ERROR] error reading web socket message. Reason:", err)
 			break
 		}
 
 		if currUser.room != nil {
 			currUser.room.stateChannel <- &newState
+			log.Println("[INFO] sent state from user", currUser.name, "to stateChannel of room", currUser.room.name)
 		}
 	}
+}
 
-	// Cleanup after disconnection
+func cleanupPostDisconnect(currUser *user) {
+	if currUser.name == "" {
+		return
+	}
 
 	// delete user from their room
 	if currUser.room != nil {
-		err = currUser.room.deleteMember(&currUser)
+		err := currUser.room.deleteMember(currUser)
 		if err != nil {
 			log.Printf("[ERROR] Error while deleting user %s from room %s. Reason: %v\n", currUser.name, currUser.room.name, err)
 		}
@@ -88,6 +110,7 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 
 	// delete user from server
 	_ = users.deleteUsingName(currUser.name)
+	log.Printf("[INFO] deleted user %s\n", currUser.name)
 }
 
 type roomPayload struct {
@@ -122,7 +145,7 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 
 	_, _, err = rooms.find(payload.RoomName)
 	if err == nil {
-		err := errors.New("room name taken")
+		err := fmt.Errorf("room with name %s already exists", payload.RoomName)
 		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
@@ -136,10 +159,10 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// update user's team
 	userPtr.team = payload.Team
 
 	newRoom := room{name: payload.RoomName, host: userPtr, members: &userArray{slice: make([]*user, 0, maxUsersPerRoom)}, stateChannel: make(chan *state)}
+
 	err = newRoom.addMember(userPtr)
 	if err != nil {
 		log.Println("[ERROR]", err)
@@ -154,7 +177,9 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	log.Printf("[INFO] created room %s", newRoom.name)
+	userPtr.room = &newRoom
+
+	log.Println("[INFO] created room", newRoom.name)
 }
 
 func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
@@ -183,7 +208,6 @@ func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// update user's team
 	userPtr.team = payload.Team
 
 	err = roomPtr.addMember(userPtr)
@@ -192,6 +216,10 @@ func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	userPtr.room = roomPtr
+
+	log.Println("[INFO] user", userPtr.name, "joined room", roomPtr.name)
 }
 
 func listRoomsHandler(writer http.ResponseWriter, req *http.Request) {
@@ -200,7 +228,38 @@ func listRoomsHandler(writer http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(writer).Encode(roomList)
 }
 
+func rotateLogs(filename string) {
+	for {
+		// wait for 1 week
+		time.Sleep(7 * 24 * time.Hour)
+
+		// close the log file before deleting it
+		log.SetOutput(os.Stdout)
+
+		// delete the log file
+		if err := os.Remove(filename); err != nil {
+			log.Println("[ERROR] failed to delete log file. Reason:", err)
+		} else {
+			log.Println("[INFO] log file deleted, creating a new one")
+			file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+			if err != nil {
+				log.Fatalln("[ERROR] failed to open log file. Reason:", err)
+			}
+			log.SetOutput(file)
+		}
+	}
+}
+
 func main() {
+	// log to file
+	file, err := os.OpenFile("server.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalln("[ERROR] failed to open log file. Reason:", err)
+	}
+	log.SetOutput(file)
+	go rotateLogs("server.log")
+
+	// route handlers
 	publicPath := filepath.Join("..", "public")
 	fileServer := http.FileServer(http.Dir(publicPath))
 	http.Handle("GET /public/", http.StripPrefix("/public/", fileServer))
@@ -211,6 +270,8 @@ func main() {
 	http.HandleFunc("POST /room", createRoomHandler)
 	http.HandleFunc("POST /join", joinRoomHandler)
 
-	log.Println("[INFO] starting server at port 8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	// serve
+	port := 8080
+	log.Println("[INFO] starting server at port", port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), nil))
 }

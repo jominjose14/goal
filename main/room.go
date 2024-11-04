@@ -7,6 +7,7 @@ import (
 	"sync"
 )
 
+const maxRoomNameLength = 25
 const maxRoomCount = 16
 const maxUsersPerRoom = 4
 const maxUsersPerTeam = 2
@@ -86,10 +87,14 @@ func (room *room) deleteMember(leavingUser *user) error {
 	// broadcast to all room members that leavingUser has left the room
 	room.broadcastMemberLeft(leavingUser)
 
+	log.Printf("[INFO] deleted member %s from room %s\n", leavingUser.name, room.name)
+
 	// delete room if it became empty after deleting leavingUser
 	if len(room.members.slice) == 0 {
-		close(room.stateChannel)
-		rooms.deleteUsingName(room.name)
+		err = rooms.deleteUsingName(room.name)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -112,8 +117,12 @@ func (room *room) broadcastMemberLeft(leavingUserPtr *user) {
 		err := userPtr.conn.WriteJSON(payload)
 		if err != nil {
 			log.Printf("[ERROR] error while communicating to user %s that user %s left room %s. Reason: %v\n", userPtr.name, leavingUserPtr.name, room.name, err)
+		} else {
+			log.Printf("[INFO] communicated to user %s that user %s left room %s\n", userPtr.name, leavingUserPtr.name, room.name)
 		}
 	}
+
+	log.Printf("[INFO] broadcast about user %s leaving room %s is complete\n", leavingUserPtr.name, room.name)
 }
 
 type reassignHostPayload struct {
@@ -133,6 +142,7 @@ func (room *room) reassignHost(leavingUserPtr *user) {
 			log.Printf("[ERROR] error while reassigning host of room %s from user %s to user %s. Reason: %v\n", room.name, leavingUserPtr.name, userPtr.name, err)
 		} else {
 			room.host = userPtr
+			log.Printf("[INFO] reassigned host of room %s from user %s to user %s\n", room.name, leavingUserPtr.name, userPtr.name)
 			break
 		}
 	}
@@ -148,7 +158,7 @@ func (room *room) broadcast(currState *state) {
 	room.mu.Lock()
 	defer room.mu.Unlock()
 
-	if len(room.members.slice) < 2 {
+	if len(room.members.slice) <= 1 {
 		return
 	}
 
@@ -159,7 +169,9 @@ func (room *room) broadcast(currState *state) {
 
 		err := userPtr.conn.WriteJSON(currState)
 		if err != nil {
-			log.Printf("[ERROR] error broadcasting state from user %s to user %s. Reason: %v\n", currState.UserName, userPtr.name, err)
+			log.Printf("[ERROR] error sending state from user %s to user %s. Reason: %v\n", currState.UserName, userPtr.name, err)
+		} else {
+			log.Printf("[INFO] sent state from user %s to user %s\n", currState.UserName, userPtr.name)
 		}
 	}
 }
@@ -180,6 +192,11 @@ func (rooms *roomArray) len() int {
 }
 
 func (rooms *roomArray) add(newRoom *room) error {
+	err := validateRoomName(newRoom.name)
+	if err != nil {
+		return err
+	}
+
 	rooms.mu.Lock()
 	defer rooms.mu.Unlock()
 
@@ -187,7 +204,7 @@ func (rooms *roomArray) add(newRoom *room) error {
 		return errors.New("server already maintains max number of rooms")
 	}
 
-	_, err := findRoomIdx(rooms.slice, newRoom.name)
+	_, err = findRoomIdx(rooms.slice, newRoom.name)
 	if err == nil {
 		return fmt.Errorf("room with name %s already exists", newRoom.name)
 	}
@@ -195,17 +212,6 @@ func (rooms *roomArray) add(newRoom *room) error {
 	rooms.slice = append(rooms.slice, newRoom)
 	go newRoom.consumeState()
 	return nil
-}
-
-// not meant for use outside this file
-func findRoomIdx(slice []*room, name string) (int, error) {
-	for i, roomPtr := range slice {
-		if roomPtr.name == name {
-			return i, nil
-		}
-	}
-
-	return -1, errors.New("room not found")
 }
 
 func (rooms *roomArray) find(roomName string) (int, *room, error) {
@@ -229,6 +235,10 @@ func (rooms *roomArray) deleteUsingIdx(idx int) error {
 		return errors.New("invalid index")
 	}
 
+	// close room's state channel
+	close(rooms.slice[idx].stateChannel)
+	log.Printf("[INFO] deleted room %s\n", rooms.slice[idx].name)
+
 	rooms.slice[idx] = rooms.slice[len(rooms.slice)-1]
 	rooms.slice = rooms.slice[:len(rooms.slice)-1]
 	return nil
@@ -243,8 +253,13 @@ func (rooms *roomArray) deleteUsingName(roomName string) error {
 		return errors.New("could not find room to delete using name")
 	}
 
+	// close room's state channel
+	close(rooms.slice[idx].stateChannel)
+
 	rooms.slice[idx] = rooms.slice[len(rooms.slice)-1]
 	rooms.slice = rooms.slice[:len(rooms.slice)-1]
+
+	log.Printf("[INFO] deleted room %s\n", roomName)
 	return nil
 }
 
@@ -270,4 +285,27 @@ func (rooms *roomArray) getJoinableRooms() []*joinableRoom {
 	}
 
 	return roomList
+}
+
+// util function: not meant to be used outside this file
+func validateRoomName(roomName string) error {
+	if roomName == "" {
+		return errors.New("room name cannot be empty")
+	}
+
+	if maxRoomNameLength < len(roomName) {
+		return fmt.Errorf("room name cannot be more than %v characters", maxRoomNameLength)
+	}
+
+	return nil
+}
+
+func findRoomIdx(slice []*room, name string) (int, error) {
+	for i, roomPtr := range slice {
+		if roomPtr.name == name {
+			return i, nil
+		}
+	}
+
+	return -1, errors.New("room not found")
 }
