@@ -251,16 +251,23 @@ func rotateLogs(filename string) {
 }
 
 func main() {
+	// get server directory
+	serverDir, err := os.Getwd()
+	if err != nil {
+		log.Fatalln("[ERROR] failed to get server directory. Reason:", err)
+	}
+
 	// log to file
-	file, err := os.OpenFile("server.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	logFile := filepath.Join(serverDir, "..", "log", "server.log")
+	file, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		log.Fatalln("[ERROR] failed to open log file. Reason:", err)
 	}
 	log.SetOutput(file)
-	go rotateLogs("server.log")
+	go rotateLogs(logFile)
 
 	// route handlers
-	publicPath := filepath.Join("..", "public")
+	publicPath := filepath.Join(serverDir, "..", "public")
 	fileServer := http.FileServer(http.Dir(publicPath))
 	http.Handle("GET /public/", http.StripPrefix("/public/", fileServer))
 

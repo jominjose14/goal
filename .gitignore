@@ -1,4 +1,5 @@
 .idea
 public/audio/old
 public/audio/original
+log
 *.log
