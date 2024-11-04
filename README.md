@@ -20,7 +20,7 @@ An air-hockey game
 
 ### How to build:
 - Windows
-    - Install Go (version < 1.23.1)
+    - Install Go (version 1.23.1 or higher)
     - Navigate to this git repository's directory in Command Prompt/PowerShell
     - `go build -o .\bin\server.exe .\main`
 - Linux/macOS
