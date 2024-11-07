@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-const maxRoomNameLength = 25
+const maxRoomNameLength = 10
 const maxRoomCount = 16
 const maxUsersPerRoom = 4
 const maxUsersPerTeam = 2
@@ -154,7 +154,7 @@ func (room *room) consumeState() {
 	}
 }
 
-func (room *room) broadcast(currState *state) {
+func (room *room) broadcast(currStatePtr *state) {
 	room.mu.Lock()
 	defer room.mu.Unlock()
 
@@ -163,15 +163,18 @@ func (room *room) broadcast(currState *state) {
 	}
 
 	for _, userPtr := range room.members.slice {
-		if userPtr == room.host {
+		if userPtr.name == currStatePtr.UserName {
 			continue
 		}
 
-		err := userPtr.conn.WriteJSON(currState)
+		// set the state.isHost field
+		currStatePtr.IsHost = currStatePtr.UserName == room.host.name
+
+		err := userPtr.conn.WriteJSON(currStatePtr)
 		if err != nil {
-			log.Printf("[ERROR] error sending state from user %s to user %s. Reason: %v\n", currState.UserName, userPtr.name, err)
+			log.Printf("[ERROR] error sending state from user %s to user %s. Reason: %v\n", currStatePtr.UserName, userPtr.name, err)
 		} else {
-			log.Printf("[INFO] sent state from user %s to user %s\n", currState.UserName, userPtr.name)
+			// log.Printf("[INFO] sent state from user %s to user %s\n", currStatePtr.UserName, userPtr.name)
 		}
 	}
 }

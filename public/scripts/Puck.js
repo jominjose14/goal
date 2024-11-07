@@ -97,19 +97,23 @@ export default class Puck {
     }
 
     update() {
-        // Slow down the puck using friction
-        this.xVel *= this.#friction;
-        this.yVel *= this.#friction;
+        // update puck only if it is (an offline game) OR (if it is an online game, provided mainPlayer is the host)
+        // Reason: if mainPlayer is not host, puck must be updated using remote state received via web socket connection
+        if(!state.isOnlineGame || (state.isOnlineGame && state.isHost)) {
+            // Slow down the puck using friction
+            this.xVel *= this.#friction;
+            this.yVel *= this.#friction;
 
-        if(!state.isGoal) this.reactToCollisions();
+            if(!state.isGoal) this.reactToCollisions();
 
-        // Update position using velocity
-        this.xPos += this.xVel;
-        this.yPos += this.yVel;
+            // Update position using velocity
+            this.xPos += this.xVel;
+            this.yPos += this.yVel;
 
-        if(stuckPuckMaxDuration <= state.stuckPuckMetrics.stuckDuration) {
-            this.reset();
-            resetStuckPuckMetrics();
+            if(stuckPuckMaxDuration <= state.stuckPuckMetrics.stuckDuration) {
+                this.reset();
+                resetStuckPuckMetrics();
+            }
         }
 
         this.draw();

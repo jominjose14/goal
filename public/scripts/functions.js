@@ -14,7 +14,7 @@ import {
     boardRinkFractionX,
     buffers,
     domain,
-    isDebugMode,
+    isDebugMode, joinPauseDuration,
     masterGain, maxRoomNameLength,
     maxUserNameLength, maxUsersPerRoom,
     millisecondsBetweenFrames, playerColors,
@@ -25,13 +25,15 @@ import {
 function startRefreshingCanvas() {
     resetStuckPuckMetrics();
     state.fpsMetrics.prevFrameTimestamp = window.performance.now();
-    refreshCanvas();
+    requestAnimationFrame(refreshCanvas);
 }
 
 function refreshCanvas() {
     if (!state.isGameOver && (state.isOnlineGame || !state.isPaused)) requestAnimationFrame(refreshCanvas);
 
+    // tasks that must happen faster than refresh rate
     if (!state.isGoal) updateStuckPuckMetrics();
+    // TODO: implement anti-overlap if relative acceleration is 0 or reducing for each pair of items that can collide
 
     const now = window.performance.now();
     const timeElapsedSincePrevFrame = now - state.fpsMetrics.prevFrameTimestamp;
@@ -40,21 +42,22 @@ function refreshCanvas() {
     // if we reach here, we are rendering a new frame
     state.fpsMetrics.prevFrameTimestamp = now - timeElapsedSincePrevFrame % millisecondsBetweenFrames; // the modulo op is an adjustment in case millisecondsBetweenFrames is not a multiple of screen's built-in millisecondsBetweenFrames (for 60Hz it is 1000/60 = 16.7ms)
 
+    // send state to server
+    if(state.isOnlineGame) sendRemoteState();
+
     // clear canvas
     state.context.clearRect(0, 0, $canvas.width, $canvas.height);
 
-    // don't start game if host is alone on board
+    // don't start game if mainPlayer is alone on board
     if(state.nonMainPlayers.length === 0) {
         drawTextAtCanvasCenter("Waiting for other players to join");
         return;
     }
 
     // frame render logic
-    if(!state.isOnlineGame || (state.isOnlineGame && state.isHost)) state.puck.update(); // update puck only if it is (an offline game) OR (if it is an online game, provided mainPlayer is the host): because if mainPlayer is not host, puck must be updated via state received via web socket connection
+    state.puck.update();
     for (const player of state.allPlayers) player.update();
     redrawVerticalRinkLines();
-
-    if(state.isOnlineGame) sendStateToServer();
 
     if(isDebugMode) {
         state.fpsMetrics.canvasFpsCounter++;
@@ -123,8 +126,9 @@ export function startOfflineGame() {
 
     state.mainPlayer.team = "left";
     state.mainPlayer.reset();
-    const aiPlayer = new Player(playerColors[1], "right", "ai");
+    const aiPlayer = new Player("Tom", playerColors[1], "right", "ai");
     aiPlayer.reset();
+    aiPlayer.addToBoard();
     newRound();
 }
 
@@ -141,6 +145,7 @@ export function startOnlineGame(mainPlayerTeam) {
     document.addEventListener("keypress", event => onPauseUsingKeyPress(event));
     document.addEventListener("dblclick", onPauseUsingDoubleClick);
 
+    state.mainPlayer.name = state.userName;
     state.mainPlayer.team = mainPlayerTeam;
 
     state.webSocketConn.onmessage = (event) => {
@@ -158,8 +163,7 @@ export function startOnlineGame(mainPlayerTeam) {
                 }
 
                 if(playerThatLeft !== null) {
-                    state.nonMainPlayers.remove(playerThatLeft);
-                    state.allPlayers.remove(playerThatLeft);
+                    playerThatLeft.removeFromBoard();
                     showToast(`Player ${playerThatLeft.name} left the room`);
                 }
             }
@@ -171,7 +175,7 @@ export function startOnlineGame(mainPlayerTeam) {
             break;
 
             case "state": {
-                if(isDebugMode) console.log("Received web socket message on 'state' channel");
+                if(isDebugMode) console.log(`Received web socket message on 'state' channel. Remote state originated from remote user ${payload.userName}`);
 
                 let found = false;
                 for(const player of state.nonMainPlayers) {
@@ -181,32 +185,36 @@ export function startOnlineGame(mainPlayerTeam) {
 
                     player.xPos = payload.playerXPos * $canvas.width;
                     player.yPos = payload.playerYPos * $canvas.height;
+                    player.xVel = payload.playerXVel * $canvas.width;
+                    player.yVel = payload.playerYVel * $canvas.height;
 
-                    if(!state.isHost) {
+                    if(payload.isHost) {
                         state.puck.xPos = payload.puckXPos * $canvas.width;
                         state.puck.yPos = payload.puckYPos * $canvas.height;
-                        $leftScore.textContent = payload.leftScore.toString();
-                        $rightScore.textContent = payload.rightScore.toString();
+                        state.puck.xVel = payload.puckXVel * $canvas.width;
+                        state.puck.yVel = payload.puckYVel * $canvas.height;
+                        setScore($leftScore, payload.leftScore);
+                        setScore($rightScore, payload.rightScore);
                     }
 
                     break;
                 }
 
-                if(!found) {
-                    if(state.allPlayers.length === 4) {
+                if(!found && payload.userName !== state.userName) { // ensure that this received remote state is not self's remote state sent back by server
+                    if(state.allPlayers.length === maxUsersPerRoom) {
                         console.error(`Server is trying to add a new player when room is full; current room count is ${maxUsersPerRoom}`);
                         return;
                     }
-                    const newPlayerColor = state.allPlayers.length === 2 ? playerColors[2] : playerColors[3]; // TODO: extend code for when 4 < maxUsersPerRoom
-                    const newPlayer = new Player(newPlayerColor, payload.team, "remote");
-                    state.nonMainPlayers.push(newPlayer);
-                    state.allPlayers.push(newPlayer);
+                    const newPlayerColor = playerColors[state.allPlayers.length]; // TODO: extend code for when maxUsersPerRoom is not 4
+                    const newPlayer = new Player(payload.userName, newPlayerColor, payload.team, "remote");
+                    newPlayer.addToBoard();
+                    showToast(`Player ${payload.userName} joined`);
                 }
             }
             break;
 
             default: {
-                if(isDebugMode) console.error(`Received web socket message from invalid channel named ${payload.channel}`);
+                if(isDebugMode) console.error(`Received web socket message from invalid channel named '${payload.channel}'`);
             }
         }
     };
@@ -239,23 +247,12 @@ export function newRound() {
 
 export function handleGoal() {
     state.isGoal = true;
-
     playSound("goal", false);
 
     if (state.puck.xPos < $canvas.width / 2) {
-        // right team scores
-        const currScore = $rightScore.textContent;
-        $rightScore.textContent = (parseInt(currScore) + 1).toString();
-        $rightScore.classList.remove("strobing-score");
-        void $rightScore.offsetWidth; // hack to replay animation
-        $rightScore.classList.add("strobing-score");
+        incrementScore($rightScore);
     } else {
-        // left team scores
-        const currScore = $leftScore.textContent;
-        $leftScore.textContent = (parseInt(currScore) + 1).toString();
-        $leftScore.classList.remove("strobing-score");
-        void $leftScore.offsetWidth; // hack to replay animation
-        $leftScore.classList.add("strobing-score");
+        incrementScore($leftScore);
     }
 
     setTimeout(newRound, 2000); // give the puck time to cross goal post's width
@@ -402,7 +399,7 @@ export function onPauseUsingKeyPress(event) {
         state.isPaused = true;
         show($pauseMenu);
         $pauseMenu.showModal();
-        $pauseMenu.blur();
+        document.activeElement.blur();
     }
 }
 
@@ -412,7 +409,7 @@ export function onPauseUsingDoubleClick() {
     state.isPaused = true;
     show($pauseMenu);
     $pauseMenu.showModal();
-    $pauseMenu.blur();
+    document.activeElement.blur();
 }
 
 export function onResume(event) {
@@ -478,10 +475,11 @@ export function connectUsingUserName() {
                 channel: "handshake",
                 userName: $userNameTxtInput.value.trim(),
             }));
+            if(isDebugMode) console.log("Sent web socket message on 'handshake' channel");
         }
 
         state.webSocketConn.onmessage = (event) => {
-            if(isDebugMode) console.log("Received web socket message");
+            if(isDebugMode) console.log("Received web socket message during handshake");
 
             const payload = JSON.parse(event.data);
             if(payload.channel !== "handshake") {
@@ -489,6 +487,8 @@ export function connectUsingUserName() {
                 state.webSocketConn.close();
                 return;
             }
+
+            if(isDebugMode) console.log("Received web socket message on 'handshake' channel");
 
             if(payload.isSuccess) {
                 state.userName = $userNameTxtInput.value.trim();
@@ -641,30 +641,36 @@ async function joinRoom(roomName, team) {
     }
 }
 
-function sendStateToServer() {
+function sendRemoteState() {
     if(state.webSocketConn === null) {
-        if(isDebugMode) console.error("Cannot send state to server as web socket connection does not exist");
+        if(isDebugMode) console.error("Cannot send remote state to server as web socket connection does not exist");
         return;
     }
 
-    state.onlineState.userName = state.userName;
-    state.onlineState.team = state.mainPlayer.team;
-    state.onlineState.playerXPos = state.mainPlayer.xPos / $canvas.width;
-    state.onlineState.playerYPos = state.mainPlayer.yPos / $canvas.height;
+    state.remoteState.userName = state.userName;
+    state.remoteState.isHost = state.isHost;
+    state.remoteState.team = state.mainPlayer.team;
+    state.remoteState.playerXPos = state.mainPlayer.xPos / $canvas.width;
+    state.remoteState.playerYPos = state.mainPlayer.yPos / $canvas.height;
+    state.remoteState.playerXVel = state.mainPlayer.xVel / $canvas.width;
+    state.remoteState.playerYVel = state.mainPlayer.yVel / $canvas.height;
 
     if(state.isHost) {
-        state.onlineState.puckXPos = state.puck.xVel / $canvas.width;
-        state.onlineState.puckYPos = state.puck.yVel / $canvas.height;
-        state.onlineState.leftScore = isNaN($leftScore.textContent) ? 0 : Math.floor(clamp(0, Number($leftScore.textContent), 999));
-        state.onlineState.rightScore = isNaN($rightScore.textContent) ? 0 : Math.floor(clamp(0, Number($rightScore.textContent), 999));
+        state.remoteState.puckXPos = state.puck.xPos / $canvas.width;
+        state.remoteState.puckYPos = state.puck.yPos / $canvas.height;
+        state.remoteState.puckXVel = state.puck.xVel / $canvas.width;
+        state.remoteState.puckYVel = state.puck.yVel / $canvas.height;
+        state.remoteState.leftScore = isNaN($leftScore.textContent) ? 0 : Math.floor(clamp(0, Number($leftScore.textContent), 999));
+        state.remoteState.rightScore = isNaN($rightScore.textContent) ? 0 : Math.floor(clamp(0, Number($rightScore.textContent), 999));
     }
 
-    state.webSocketConn.send(JSON.stringify(state.onlineState));
+    state.webSocketConn.send(JSON.stringify(state.remoteState));
 }
 
 export function resetPostDisconnect() {
     state.webSocketConn = null;
     state.userName = null;
+    state.mainPlayer.name = "You";
     state.mainPlayer.team = "left";
     state.isOnlineGame = false;
     state.isHost = false;
@@ -673,10 +679,10 @@ export function resetPostDisconnect() {
 // utility
 export function drawTextAtCanvasCenter(text) {
     const ctx = state.context;
-    const padding = 0.02 * $canvas.height;
-    const fontSize = 0.04 * $canvas.height;
+    const padding = 0.03 * $canvas.height;
+    const fontSize = 0.05 * $canvas.height;
 
-    ctx.font = `${fontSize}px 'Trebuchet MS', sans-serif`;
+    ctx.font = `${fontSize}px "Protest Riot", "Trebuchet MS", sans-serif`;
     const textWidth = ctx.measureText(text).width;
     const textHeight = fontSize;
     const textX = ($canvas.width - textWidth) / 2;
@@ -686,10 +692,10 @@ export function drawTextAtCanvasCenter(text) {
     const boxY = ($canvas.height - textHeight) /2 - padding;
     const boxWidth = textWidth + 2 * padding;
     const boxHeight = textHeight + 2 * padding;
-    const boxBorderRadius = 0.01 * $canvas.height;
+    const boxBorderRadius = 0.03 * $canvas.height;
 
     // draw underlying box
-    ctx.fillStyle = "hsla(0, 0%, 100%, 0.1)"; // box fill color
+    ctx.fillStyle = "hsla(0, 0%, 20%, 0.95)"; // box fill color
     ctx.beginPath();
     ctx.moveTo(boxX + boxBorderRadius, boxY);
     ctx.arcTo(boxX + boxWidth, boxY, boxX + boxWidth, boxY + boxHeight, boxBorderRadius);
@@ -743,12 +749,35 @@ export function stopLoading() {
 export function showToast(msg) {
     clearTimeout(state.toastTimeoutId);
     hide($toast);
+
     $toast.querySelector(".toast-msg").textContent = msg;
     $toast.style.right -= $toast.width;
+
     show($toast);
+
     state.toastTimeoutId = setTimeout(() => hide($toast), toastDuration);
 }
 
 export function capitalizeFirstLetter(str) {
     return str[0].toUpperCase() + str.substring(1);
+}
+
+export function incrementScore($score) {
+    let currScore = $score.textContent;
+    if(isNaN(currScore)) currScore = -1;
+    $score.textContent = (parseInt(currScore) + 1).toString();
+    strobeScore($score);
+}
+
+export function setScore($score, newScore) {
+    let currScore = $score.textContent;
+    if(isNaN(currScore)) currScore = 0;
+    $score.textContent = newScore.toString();
+    if(parseInt(currScore) !== newScore) strobeScore($score);
+}
+
+export function strobeScore($score) {
+    $score.classList.remove("strobing-score");
+    void $score.offsetWidth; // hack to replay animation
+    $score.classList.add("strobing-score");
 }

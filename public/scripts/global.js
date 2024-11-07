@@ -3,11 +3,12 @@ export const isDebugMode = true;
 
 // online
 export const domain = (new URL(window.location.href)).host;
-export const maxUserNameLength = 25;
-export const maxRoomNameLength = 25;
+export const maxUserNameLength = 10;
+export const maxRoomNameLength = 10;
 export const maxUsersPerRoom = 4;
 export const maxUsersPerTeam = 2;
 export const webSocketChannels = ["handshake", "memberLeft", "reassignHost", "state"];
+export const joinPauseDuration = 250; // measured in milliseconds
 
 // html elements
 export const $welcomeMenu = document.querySelector(".menu.welcome");
@@ -64,14 +65,19 @@ export const soundUrls = {
 // == State ==
 export const state = {
     // == Online ==
-    onlineState: {
+    remoteState: {
         channel: "state",
         userName: "",
+        isHost: false,
         team: "",
         playerXPos: 0,
         playerYPos: 0,
+        playerXVel: 0,
+        playerYVel: 0,
         puckXPos: 0,
         puckYPos: 0,
+        puckXVel: 0,
+        puckYVel: 0,
         leftScore: 0,
         rightScore: 0,
     },

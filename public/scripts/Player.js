@@ -21,13 +21,13 @@ export default class Player {
     #yVel = 0;
     prevCollisionTimestamp = 0;
 
-    constructor(color, team, type) {
+    constructor(name, color, team, type) {
+        this.#name = name;
         this.#color = color;
         this.#team = team;
         this.#type = type;
 
-        state.allPlayers.push(this);
-        if(this.#type !== "main") state.nonMainPlayers.push(this);
+        this.resetRadius();
     }
 
     get xPos() {
@@ -96,6 +96,19 @@ export default class Player {
     set yVel(yVel) {
         if(isNaN(yVel)) return;
         this.#yVel = clamp(-$canvas.height, yVel, $canvas.height);
+    }
+
+    addToBoard() {
+        state.allPlayers.push(this);
+        if(this.#type !== "main") state.nonMainPlayers.push(this);
+    }
+
+    removeFromBoard() {
+        let idx = state.nonMainPlayers.indexOf(this);
+        if(idx > -1) state.nonMainPlayers.splice(idx, 1);
+
+        idx = state.allPlayers.indexOf(this);
+        if(idx > -1) state.allPlayers.splice(idx, 1);
     }
 
     resetRadius() {

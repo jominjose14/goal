@@ -33,7 +33,9 @@ function main() {
 
     document.getElementById("difficulty-selector").textContent = state.difficulty;
 
-    state.mainPlayer = new Player(playerColors[0], "left", "main");
+    state.mainPlayer = new Player("You", playerColors[0], "left", "main");
+    state.mainPlayer.reset();
+    state.mainPlayer.addToBoard();
     state.puck = new Puck(0, 0, 20, "hsla(0, 0%, 100%, 1)");
 
     if(isHandheldDevice()) {

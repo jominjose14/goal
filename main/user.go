@@ -20,7 +20,7 @@ type userArray struct {
 	slice []*user
 }
 
-const maxUserNameLength = 25
+const maxUserNameLength = 10
 const maxUserCount = maxRoomCount * maxUsersPerRoom
 
 var users userArray = userArray{slice: make([]*user, 0, maxUserCount)}

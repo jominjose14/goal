@@ -34,13 +34,13 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	// set up web socket connection
 	conn, err := upgrader.Upgrade(writer, req, nil)
 	if err != nil {
-		log.Println("[ERROR] Error upgrading to WebSocket:", err)
+		log.Println("[ERROR] error upgrading to WebSocket:", err)
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	conn.SetCloseHandler(func(code int, text string) error {
-		logMsg := fmt.Sprintf("WebSocket closed with code %d", code)
+		logMsg := fmt.Sprintf("[INFO] webSocket closed with code %d", code)
 		if text != "" {
 			logMsg += ": " + text
 		}
@@ -82,15 +82,17 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	// start receiving state from user
 	for {
 		var newState state
-		err := conn.ReadJSON(newState)
+		err := conn.ReadJSON(&newState)
 		if err != nil {
 			log.Println("[ERROR] error reading web socket message. Reason:", err)
 			break
 		}
 
+		// log.Println("[INFO] received state:", newState)
+
 		if currUser.room != nil {
 			currUser.room.stateChannel <- &newState
-			log.Println("[INFO] sent state from user", currUser.name, "to stateChannel of room", currUser.room.name)
+			// log.Println("[INFO] sent state from user", currUser.name, "to stateChannel of room", currUser.room.name)
 		}
 	}
 }
@@ -104,7 +106,7 @@ func cleanupPostDisconnect(currUser *user) {
 	if currUser.room != nil {
 		err := currUser.room.deleteMember(currUser)
 		if err != nil {
-			log.Printf("[ERROR] Error while deleting user %s from room %s. Reason: %v\n", currUser.name, currUser.room.name, err)
+			log.Printf("[ERROR]error while deleting user %s from room %s. Reason: %v\n", currUser.name, currUser.room.name, err)
 		}
 	}
 
@@ -219,7 +221,7 @@ func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 
 	userPtr.room = roomPtr
 
-	log.Println("[INFO] user", userPtr.name, "joined room", roomPtr.name)
+	log.Printf("[INFO] user %s joined room %s\n", userPtr.name, roomPtr.name)
 }
 
 func listRoomsHandler(writer http.ResponseWriter, req *http.Request) {
