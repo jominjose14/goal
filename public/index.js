@@ -12,14 +12,14 @@ import {
     $rotateScreenPopup,
     $onlineMenu,
     $createRoomMenu,
-    $joinRoomMenu, masterGain, playerColors
+    $joinRoomMenu, masterGain, strikerImgUrls,
 } from "./scripts/global.js";
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {
     exitGame, closeModal, connectUsingUserName, createRoom, resetPostDisconnect, getRoomList, hide, isHandheldDevice,
     loadSound, onMouseMove, onResize, onResume, onTouchMove, playSound, resizeBoard, show,
-    startLoading, startOfflineGame, stopLoading
+    startLoading, startOfflineGame, stopLoading, joinRoom
 } from "./scripts/functions.js";
 
 // Call main
@@ -33,7 +33,7 @@ function main() {
 
     document.getElementById("difficulty-selector").textContent = state.difficulty;
 
-    state.mainPlayer = new Player("You", playerColors[0], "left", "main");
+    state.mainPlayer = new Player("You", 0, "left", "main");
     state.mainPlayer.reset();
     state.mainPlayer.addToBoard();
     state.puck = new Puck(0, 0, 20, "hsla(0, 0%, 100%, 1)");
@@ -88,11 +88,11 @@ function attachEventListeners() {
     const $settingsBtn = document.querySelector(".settings-btn");
     $settingsBtn.onclick = openSettings;
 
-    for(const $backBtn of document.querySelectorAll('.menu .home-btn')) {
+    for(const $backBtn of document.querySelectorAll(".menu .home-btn")) {
         $backBtn.onclick = (event) => onClickHomeBtn(event.target);
     }
 
-    for(const $selector of document.querySelectorAll('.menu .selector')) {
+    for(const $selector of document.querySelectorAll(".menu .selector")) {
         $selector.addEventListener("click", (event) => {
             handleSelectorClick(event.target);
             if(event.target.id === "difficulty-selector") {
@@ -105,10 +105,25 @@ function attachEventListeners() {
         });
     }
 
+    for(const $imgSelector of document.querySelectorAll(".img-selector")) {
+        $imgSelector.addEventListener("click", (event) => {
+            const $imgSelector = event.target.closest(".img-selector");
+            handleImgSelectorClick($imgSelector);
+            if($imgSelector.id === "create-room-striker-selector" || $imgSelector.id === "join-room-striker-selector") {
+                onChangeStriker($imgSelector);
+            }
+        });
+    }
+
     $onlineMenu.querySelector(".host-menu-btn").onclick = onClickCreateRoomMenuBtn;
     $onlineMenu.querySelector(".join-menu-btn").onclick = onClickJoinRoomMenuBtn;
     $createRoomMenu.querySelector(".create-room-btn").onclick = onClickCreateRoomBtn;
-    $joinRoomMenu.querySelector(".refresh-btn").onclick = getRoomList;
+    $joinRoomMenu.querySelector(".join-room-btn").onclick = onClickJoinRoomBtn;
+    $joinRoomMenu.querySelector(".refresh-btn").onclick = async () => {
+        startLoading();
+        await getRoomList();
+        stopLoading();
+    };
 
     $pauseMenu.querySelector(".resume-btn").onclick = onResume;
     $pauseMenu.querySelector(".exit-btn").onclick = (event) => exitGame(event.target);
@@ -181,6 +196,18 @@ function handleSelectorClick($element) {
     }
 }
 
+function handleImgSelectorClick($imgSelector) {
+    const values = $imgSelector.dataset.values.split(",");
+    const currValue = $imgSelector.dataset.value;
+
+    for(let i=0; i<values.length; i++) {
+        if(values[i] === currValue) {
+            $imgSelector.dataset.value = values[(i+1) % values.length];
+            break;
+        }
+    }
+}
+
 function onChangeOrientation(event) {
     if(event === undefined && window.innerWidth < window.innerHeight || event !== undefined && event.target.type.includes("portrait")) {
         // portrait orientation: show popup that asks user to rotate screen, do not allow user to play game
@@ -206,6 +233,11 @@ function onChangeTheme() {
     state.theme = document.getElementById("theme-selector").textContent;
 }
 
+function onChangeStriker($imgSelector) {
+    const $img = $imgSelector.querySelector("img");
+    $img.src = strikerImgUrls[parseInt($imgSelector.dataset.value)];
+}
+
 async function onClickCreateRoomMenuBtn() {
     $onlineMenu.querySelector(".error-msg").textContent = "";
 
@@ -217,7 +249,7 @@ async function onClickCreateRoomMenuBtn() {
 
     hide($onlineMenu);
     show($createRoomMenu);
-    document.getElementById("room-name").focus();
+    document.getElementById("create-room-name").focus();
 }
 
 async function onClickJoinRoomMenuBtn() {
@@ -233,19 +265,44 @@ async function onClickJoinRoomMenuBtn() {
     $joinRoomMenu.querySelector(".error-msg").textContent = "";
     show($joinRoomMenu);
 
+    startLoading();
     await getRoomList();
+    stopLoading();
 }
 
 async function onClickCreateRoomBtn() {
     const $errorMsg = $createRoomMenu.querySelector(".error-msg");
     $errorMsg.textContent = "";
 
-    const $roomNameTxtInput = document.getElementById("room-name");
+    const $roomNameTxtInput = document.getElementById("create-room-name");
     const roomName = $roomNameTxtInput.value.trim();
-    const $teamSelector = document.getElementById("room-team-selector");
+    const $teamSelector = document.getElementById("create-room-team-selector");
     const team = $teamSelector.textContent.toLowerCase();
+    const $strikerSelector = document.getElementById("create-room-striker-selector");
+    const striker = parseInt($strikerSelector.dataset.value);
 
     startLoading();
-    await createRoom(roomName, team);
+    await createRoom(roomName, team, striker);
+    stopLoading();
+}
+
+async function onClickJoinRoomBtn() {
+    const $errorMsg = $joinRoomMenu.querySelector(".error-msg");
+    $errorMsg.textContent = "";
+
+    const $joinRoomItem = document.querySelector(".join-room-list > .join-room-item.selected");
+    if($joinRoomItem === null) {
+        $errorMsg.textContent = "Please select a room";
+        return;
+    }
+
+    const roomName = $joinRoomItem.textContent.trim();
+    const $teamSelector = document.getElementById("join-room-team-selector");
+    const team = $teamSelector.textContent.toLowerCase();
+    const $strikerSelector = document.getElementById("join-room-striker-selector");
+    const striker = parseInt($strikerSelector.dataset.value);
+
+    startLoading();
+    await joinRoom(roomName, team, striker);
     stopLoading();
 }

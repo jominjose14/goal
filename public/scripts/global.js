@@ -34,7 +34,37 @@ export const boardRinkFractionX = 0.008; // for 16:9 aspect ratio
 export const boardRinkFractionY = 0.014; // for 16:9 aspect ratio
 export const puckRadiusFraction = 0.015; // TODO: make this ratio editable in settings
 export const playerRadiusFraction = 0.0225 // TODO: make this ratio editable in settings;
-export const playerColors = ["hsla(190, 100%, 50%, 1)", "hsla(120, 100%, 50%, 1)", "hsla(65, 100%, 50%, 1)", "hsla(35, 100%, 50%, 1)"];
+
+// reference values
+export const allTeams = ["Left", "Right"];
+export const allStrikerIndices = [];
+for(let i=0; i<maxUsersPerRoom; i++) {
+    allStrikerIndices.push(i);
+}
+export const strikerImgUrls = [
+    "images/striker-0.svg",
+    "images/striker-1.svg",
+    "images/striker-2.svg",
+    "images/striker-3.svg",
+]; // TODO: extend to work when 4 < maxUsersPerRoom
+export const strikers = [
+    {
+        name: "G",
+        color: "hsla(190, 100%, 50%, 1)",
+    },
+    {
+        name: "O",
+        color: "hsla(120, 100%, 50%, 1)",
+    },
+    {
+        name: "A",
+        color: "hsla(65, 100%, 50%, 1)",
+    },
+    {
+        name: "L",
+        color: "hsla(35, 100%, 50%, 1)",
+    },
+]; // TODO: extend to work when 4 < maxUsersPerRoom
 
 // config
 export const fps = 60;
@@ -70,6 +100,7 @@ export const state = {
         userName: "",
         isHost: false,
         team: "",
+        striker: 0,
         playerXPos: 0,
         playerYPos: 0,
         playerXVel: 0,

@@ -148,6 +148,29 @@ func (room *room) reassignHost(leavingUserPtr *user) {
 	}
 }
 
+func (room *room) getAvailableStrikers() []int {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	isStrikerAvailable := make([]bool, maxUsersPerRoom)
+	for i := range isStrikerAvailable {
+		isStrikerAvailable[i] = true
+	}
+
+	for _, userPtr := range room.members.slice {
+		isStrikerAvailable[userPtr.striker] = false
+	}
+
+	availableStrikers := make([]int, 0, maxUsersPerRoom)
+	for i := range isStrikerAvailable {
+		if isStrikerAvailable[i] {
+			availableStrikers = append(availableStrikers, i)
+		}
+	}
+
+	return availableStrikers
+}
+
 func (room *room) consumeState() {
 	for currStatePtr := range room.stateChannel {
 		room.broadcast(currStatePtr)
@@ -267,9 +290,10 @@ func (rooms *roomArray) deleteUsingName(roomName string) error {
 }
 
 type joinableRoom struct {
-	RoomName         string `json:"roomName"`
-	CanJoinLeftTeam  bool   `json:"canJoinLeftTeam"`
-	CanJoinRightTeam bool   `json:"canJoinRightTeam"`
+	RoomName          string `json:"roomName"`
+	CanJoinLeftTeam   bool   `json:"canJoinLeftTeam"`
+	CanJoinRightTeam  bool   `json:"canJoinRightTeam"`
+	AvailableStrikers []int  `json:"availableStrikers"`
 }
 
 func (rooms *roomArray) getJoinableRooms() []*joinableRoom {
@@ -284,7 +308,12 @@ func (rooms *roomArray) getJoinableRooms() []*joinableRoom {
 			continue
 		}
 
-		roomList = append(roomList, &joinableRoom{RoomName: room.name, CanJoinLeftTeam: leftTeamCount < maxUsersPerTeam, CanJoinRightTeam: rightTeamCount < maxUsersPerTeam})
+		roomList = append(roomList, &joinableRoom{
+			RoomName:          room.name,
+			CanJoinLeftTeam:   leftTeamCount < maxUsersPerTeam,
+			CanJoinRightTeam:  rightTeamCount < maxUsersPerTeam,
+			AvailableStrikers: room.getAvailableStrikers(),
+		})
 	}
 
 	return roomList

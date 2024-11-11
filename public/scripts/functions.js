@@ -14,11 +14,11 @@ import {
     boardRinkFractionX,
     buffers,
     domain,
-    isDebugMode, joinPauseDuration,
+    isDebugMode,
     masterGain, maxRoomNameLength,
     maxUserNameLength, maxUsersPerRoom,
-    millisecondsBetweenFrames, playerColors,
-    state, toastDuration
+    millisecondsBetweenFrames,
+    state, allStrikerIndices, allTeams, toastDuration,
 } from "./global.js";
 
 // game logic
@@ -126,13 +126,13 @@ export function startOfflineGame() {
 
     state.mainPlayer.team = "left";
     state.mainPlayer.reset();
-    const aiPlayer = new Player("Tom", playerColors[1], "right", "ai");
+    const aiPlayer = new Player("Tom", 1, "right", "ai");
     aiPlayer.reset();
     aiPlayer.addToBoard();
     newRound();
 }
 
-export function startOnlineGame(mainPlayerTeam) {
+export function startOnlineGame(team, strikerIdx) {
     state.isOnlineGame = true;
     state.isPaused = false;
 
@@ -146,7 +146,8 @@ export function startOnlineGame(mainPlayerTeam) {
     document.addEventListener("dblclick", onPauseUsingDoubleClick);
 
     state.mainPlayer.name = state.userName;
-    state.mainPlayer.team = mainPlayerTeam;
+    state.mainPlayer.team = team;
+    state.mainPlayer.strikerIdx = strikerIdx;
 
     state.webSocketConn.onmessage = (event) => {
         const payload = JSON.parse(event.data);
@@ -205,8 +206,7 @@ export function startOnlineGame(mainPlayerTeam) {
                         console.error(`Server is trying to add a new player when room is full; current room count is ${maxUsersPerRoom}`);
                         return;
                     }
-                    const newPlayerColor = playerColors[state.allPlayers.length]; // TODO: extend code for when maxUsersPerRoom is not 4
-                    const newPlayer = new Player(payload.userName, newPlayerColor, payload.team, "remote");
+                    const newPlayer = new Player(payload.userName, payload.striker, payload.team, "remote");
                     newPlayer.addToBoard();
                     showToast(`Player ${payload.userName} joined`);
                 }
@@ -374,16 +374,6 @@ export function exitGame($element) {
     show($welcomeMenu);
 }
 
-async function onClickJoinRoomBtn(event) {
-    const $btn = event.target;
-    const roomName = $btn.dataset.roomName;
-    const team = $btn.dataset.team;
-
-    startLoading();
-    await joinRoom(roomName, team);
-    stopLoading();
-}
-
 export function closeModal($element) {
     $element.closest("dialog").close();
 }
@@ -433,6 +423,21 @@ export function onTouchMove(event) {
 
 export function onResize() {
     requestAnimationFrame(resizeBoard);
+}
+
+function onClickJoinableRoom($roomItem) {
+    const $currSelectedRoom = document.querySelector(".join-room-list > .join-room-item.selected");
+    const $teamSelector = document.getElementById("join-room-team-selector");
+    const $strikerSelector = document.getElementById("join-room-striker-selector");
+
+    if($currSelectedRoom !== null) $currSelectedRoom.classList.remove("selected");
+    $roomItem.classList.add("selected");
+
+    $teamSelector.dataset.values = $roomItem.dataset.teams;
+    resetTextSelector($teamSelector);
+
+    $strikerSelector.dataset.values = $roomItem.dataset.strikers;
+    resetImgSelector($strikerSelector);
 }
 
 // online
@@ -517,7 +522,7 @@ export function connectUsingUserName() {
     });
 }
 
-export async function createRoom(roomName, team) {
+export async function createRoom(roomName, team, strikerIdx) {
     const $errorMsg = $createRoomMenu.querySelector(".error-msg");
     const protocol = isDebugMode ? "http" : "https";
     let response = null;
@@ -540,6 +545,7 @@ export async function createRoom(roomName, team) {
                 roomName,
                 userName: state.userName,
                 team,
+                striker: strikerIdx,
             })});
     } catch(err) {
         console.error("Error occurred while creating room. Reason: ", err);
@@ -549,7 +555,7 @@ export async function createRoom(roomName, team) {
 
     if(response !== null && response.ok) {
         state.isHost = true;
-        startOnlineGame(team);
+        startOnlineGame(team, strikerIdx);
     } else if(response !== null) {
         const serverErrorMsg = await response.text();
         $errorMsg.textContent = capitalizeFirstLetter(serverErrorMsg);
@@ -564,51 +570,59 @@ export async function getRoomList() {
     let response = null;
 
     try {
-        startLoading();
         response = await fetch(`${protocol}://${domain}/rooms`);
     } catch(err) {
         console.error("Failed to fetch joinable rooms list. Reason: ", err);
         $errorMsg.textContent = "Failed to fetch rooms";
-        stopLoading();
         return;
     }
 
     if(response !== null && response.ok) {
         const roomList = await response.json();
-        if(roomList.length === 0) {
-            $errorMsg.textContent = "No rooms available";
-            return;
-        }
+        const $joinRoomList = $joinRoomMenu.querySelector(".join-room-list");
 
         $errorMsg.textContent = "";
-        const $joinableRoomList = $joinRoomMenu.querySelector(".joinable-room-list");
-        const $joinableRoomTemplate = document.getElementById("joinable-room-template");
+        $joinRoomList.innerHTML = "";
 
-        $joinableRoomList.innerHTML = "";
-        for(const room of roomList) {
-            const $room = $joinableRoomTemplate.content.cloneNode(true);
-            $room.querySelector(".joinable-room-name").textContent = room.roomName;
+        if(roomList.length === 0) {
+            $joinRoomList.innerHTML = `
+                <div class="no-rooms-msg">Please create a room to play</div>
+            `;
+            $joinRoomList.style.justifyContent = "center";
+            $errorMsg.textContent = "No rooms available";
+        } else {
+            $joinRoomList.style.justifyContent = "start";
 
-            const $leftTeamBtn = $room.querySelector(".joinable-room-team-btn[data-team='left']");
-            $leftTeamBtn.dataset.roomName = room.roomName;
-            if(!room.canJoinLeftTeam) $leftTeamBtn.disabled = true;
-            if(room.canJoinLeftTeam) $leftTeamBtn.onclick = (event) => onClickJoinRoomBtn(event);
+            for(let i=0; i<roomList.length; i++) {
+                const room = roomList[i];
 
-            const $rightTeamBtn = $room.querySelector(".joinable-room-team-btn[data-team='right']");
-            $rightTeamBtn.dataset.roomName = room.roomName;
-            if(!room.canJoinRightTeam) $rightTeamBtn.disabled = true;
-            if(room.canJoinRightTeam) $rightTeamBtn.onclick = (event) => onClickJoinRoomBtn(event);
+                const $room = document.createElement("button");
+                $room.classList.add("menu-btn", "join-room-item");
+                $room.textContent = room.roomName;
 
-            $joinableRoomList.appendChild($room);
+                $room.dataset.idx = i;
+                $room.dataset.name = room.roomName;
+
+                const joinableTeams = [];
+                if(room.canJoinLeftTeam) joinableTeams.push("Left");
+                if(room.canJoinRightTeam) joinableTeams.push("Right");
+                $room.dataset.teams = joinableTeams.join(",");
+
+                $room.dataset.strikers = room.availableStrikers.join(",");
+
+                $room.onclick = () => onClickJoinableRoom($room);
+                $joinRoomList.appendChild($room);
+            }
         }
     } else {
         $errorMsg.textContent = "Something went wrong";
     }
 
-    stopLoading();
+    resetTeamSelectorValues(document.getElementById("join-room-team-selector"));
+    resetStrikerSelectorValues(document.getElementById("join-room-striker-selector"));
 }
 
-async function joinRoom(roomName, team) {
+export async function joinRoom(roomName, team, strikerIdx) {
     const $errorMsg = $joinRoomMenu.querySelector(".error-msg");
     $errorMsg.textContent = "";
     const protocol = isDebugMode ? "http" : "https";
@@ -624,6 +638,7 @@ async function joinRoom(roomName, team) {
                 roomName,
                 userName: state.userName,
                 team,
+                striker: strikerIdx,
             })});
     } catch(err) {
         console.error("Error occurred while joining room. Reason: ", err);
@@ -633,7 +648,7 @@ async function joinRoom(roomName, team) {
 
     if(response !== null && response.ok) {
         state.isHost = false;
-        startOnlineGame(team);
+        startOnlineGame(team, strikerIdx);
     } else if(response !== null) {
         $errorMsg.textContent = await response.text();
     } else {
@@ -650,6 +665,7 @@ function sendRemoteState() {
     state.remoteState.userName = state.userName;
     state.remoteState.isHost = state.isHost;
     state.remoteState.team = state.mainPlayer.team;
+    state.remoteState.striker = state.mainPlayer.strikerIdx;
     state.remoteState.playerXPos = state.mainPlayer.xPos / $canvas.width;
     state.remoteState.playerYPos = state.mainPlayer.yPos / $canvas.height;
     state.remoteState.playerXVel = state.mainPlayer.xVel / $canvas.width;
@@ -682,9 +698,8 @@ export function drawTextAtCanvasCenter(text) {
     const padding = 0.03 * $canvas.height;
     const fontSize = 0.05 * $canvas.height;
 
-    ctx.font = `${fontSize}px "Protest Riot", "Trebuchet MS", sans-serif`;
     const textWidth = ctx.measureText(text).width;
-    const textHeight = fontSize;
+    const textHeight = 1.25 * fontSize;
     const textX = ($canvas.width - textWidth) / 2;
     const textY = ($canvas.height + textHeight - padding) / 2;
 
@@ -706,8 +721,13 @@ export function drawTextAtCanvasCenter(text) {
     ctx.fill();
 
     // draw text over box
-    ctx.fillStyle = "hsla(0, 0%, 100%, 0.25)"; // text fill color
+    ctx.beginPath();
+    ctx.font = `${fontSize}px "Protest Riot", "Trebuchet MS", sans-serif`;
+    ctx.textAlign = "start";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "hsla(0, 0%, 100%, 0.25)";
     ctx.fillText(text, textX, textY);
+    ctx.closePath();
 }
 
 export function playSound(name, shouldLoop) {
@@ -780,4 +800,25 @@ export function strobeScore($score) {
     $score.classList.remove("strobing-score");
     void $score.offsetWidth; // hack to replay animation
     $score.classList.add("strobing-score");
+}
+
+export function resetTextSelector($selector) {
+    $selector.textContent = $selector.dataset.values.split(",").at(-1);
+    $selector.click();
+}
+
+export function resetImgSelector($selector) {
+    $selector.dataset.value = $selector.dataset.values.split(",").at(-1);
+    $selector.click();
+}
+
+export function resetTeamSelectorValues($teamSelector) {
+    $teamSelector.dataset.values = allTeams.join(",");
+    resetTextSelector($teamSelector);
+}
+
+export function resetStrikerSelectorValues($strikerSelector) {
+    $strikerSelector.dataset.values = allStrikerIndices.join(",");
+    resetImgSelector($strikerSelector);
+
 }

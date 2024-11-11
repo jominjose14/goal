@@ -1,0 +1,54 @@
+.field {
+    .joinable-room {
+        display: flex;
+        align-items: center;
+        background-color: hsla(0, 0%, 100%, 0.05);
+        font-family: "Trebuchet MS", sans-serif;
+        font-size: 1.1em;
+        border-radius: 0.4em;
+        width: 9em;
+        padding: 0.6em;
+        border: 1px solid hsla(0, 0%, 100%, 0.1);
+
+        .joinable-room-name {
+            flex-grow: 1;
+            max-width: 85%;
+            overflow: hidden;
+            text-align: center;
+        }
+
+        .joinable-room-teams {
+            margin-left: auto;
+            display: flex;
+            gap: 0.1em;
+
+            .joinable-room-team-btn {
+                all: unset;
+                cursor: pointer;
+                display: grid;
+                place-items: center;
+                height: 4vmin;
+                width: 4vmin;
+                background-color: hsla(0, 0%, 100%, 0.05);
+                border-radius: 0.45em;
+                border: 1px solid hsla(0, 0%, 100%, 0.1);
+
+                &:hover {
+                    background-color: hsla(0, 0%, 100%, 0.1);
+                }
+
+                &:focus-visible {
+                    outline: 3px solid black;
+                }
+            }
+
+            .joinable-room-team-btn[disabled] {
+                color: hsla(0, 0%, 100%, 0.2);
+
+                &:hover {
+                    background-color: hsla(0, 0%, 100%, 0.05);
+                }
+            }
+        }
+    }
+}

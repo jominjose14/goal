@@ -74,14 +74,20 @@
     <div class="menu host hidden">
         <h1>Host</h1>
         <div class="field">
-            <label for="room-name">Room Name</label>
-            <input type="text" name="room-name" id="room-name" placeholder="Type here">
+            <label for="create-room-name">Room Name</label>
+            <input type="text" name="room-name" id="create-room-name" placeholder="Type here">
             <div class="error-msg"></div>
         </div>
         <div class="field">
-            <label for="room-team-selector">Team</label>
-            <button id="room-team-selector" class="menu-btn selector" data-values="Left,Right">
+            <label for="create-room-team-selector">Team</label>
+            <button id="create-room-team-selector" class="menu-btn selector" data-values="Left,Right">
                 Left
+            </button>
+        </div>
+        <div class="field">
+            <label for="create-room-striker-selector">Striker</label>
+            <button id="create-room-striker-selector" class="menu-btn img-selector" data-values="0,1,2,3" data-value="0">
+                <img src="images/striker-0.svg" alt="Striker">
             </button>
         </div>
         <button class="menu-btn create-room-btn">Create Room</button>
@@ -90,20 +96,31 @@
 
     <div class="menu join hidden">
         <h1>Join</h1>
-        <div class="field">
-            <label class="error-msg">No rooms available</label>
-            <div class="joinable-room-list"></div>
-            <template id="joinable-room-template">
-                <div class="joinable-room">
-                    <div class="joinable-room-name"></div>
-                    <div class="joinable-room-teams">
-                        <button class="joinable-room-team-btn" data-team="left">L</button>
-                        <button class="joinable-room-team-btn" data-team="right">R</button>
-                    </div>
+        <div class="join-rooms-container">
+            <div class="join-rooms-left">
+                <div class="field">
+                    <label>Rooms</label>
+                    <div class="join-room-list"></div>
                 </div>
-            </template>
+            </div>
+            <div class="join-rooms-right">
+                <div class="field">
+                    <label for="join-room-team-selector">Team</label>
+                    <button id="join-room-team-selector" class="menu-btn selector" data-values="Left,Right">
+                        Left
+                    </button>
+                </div>
+                <div class="field">
+                    <label for="join-room-striker-selector">Striker</label>
+                    <button id="join-room-striker-selector" class="menu-btn img-selector" data-values="0,1,2,3" data-value="0">
+                        <img src="images/striker-0.svg" alt="Striker">
+                    </button>
+                </div>
+            </div>
         </div>
+        <div class="error-msg">No rooms available</div>
         <button class="menu-btn refresh-btn">Refresh</button>
+        <button class="menu-btn join-room-btn">Join</button>
         <button class="menu-btn home-btn">Home</button>
     </div>
 

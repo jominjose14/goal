@@ -9,10 +9,11 @@ import (
 )
 
 type user struct {
-	name string
-	conn *websocket.Conn
-	team string
-	room *room
+	name    string
+	conn    *websocket.Conn
+	room    *room
+	team    string
+	striker int
 }
 
 type userArray struct {

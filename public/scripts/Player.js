@@ -2,16 +2,16 @@ import {
     $canvas, aiPlayerAccel,
     boardRinkFractionX,
     boardRinkFractionY,
-    mainPlayerVelMultiplier,
+    mainPlayerVelMultiplier, maxUsersPerRoom,
     playerRadiusFraction,
-    state
+    state, strikers
 } from "./global.js";
 import {clamp} from "./functions.js";
 
 export default class Player {
     #name;
     #radius;
-    #color;
+    #strikerIdx;
     #team;
     #type; // main OR ai OR remote
     #xPos;
@@ -21,9 +21,9 @@ export default class Player {
     #yVel = 0;
     prevCollisionTimestamp = 0;
 
-    constructor(name, color, team, type) {
+    constructor(name, strikerIdx, team, type) {
         this.#name = name;
-        this.#color = color;
+        this.#strikerIdx = strikerIdx;
         this.#team = team;
         this.#type = type;
 
@@ -46,24 +46,33 @@ export default class Player {
         return this.#yVel;
     }
 
+    get name() {
+        return this.#name;
+    }
+
     get radius() {
         return this.#radius;
+    }
+
+    get strikerIdx() {
+        return this.#strikerIdx;
     }
 
     get team() {
         return this.#team;
     }
 
-    get name() {
-        return this.#name;
+    set name(name) {
+        this.#name = name;
+    }
+
+    set strikerIdx(strikerIdx) {
+        if(strikerIdx < 0 || maxUsersPerRoom < strikerIdx) return;
+        this.#strikerIdx = strikerIdx;
     }
 
     set team(team) {
         this.#team = team;
-    }
-
-    set name(name) {
-        this.#name = name;
     }
 
     set xPos(xPos) {
@@ -309,8 +318,17 @@ export default class Player {
         // colored area
         ctx.beginPath();
         ctx.arc(this.#xPos, this.#yPos, 0.8 * this.#radius, 0, 2 * Math.PI, false);
-        ctx.fillStyle = this.#color;
+        ctx.fillStyle = strikers[this.#strikerIdx].color;
         ctx.fill();
         ctx.closePath();
+
+        // letter
+        // ctx.beginPath();
+        // ctx.font = `${1.0 * this.#radius}px "Protest Riot", "Trebuchet MS", sans-serif`;
+        // ctx.textAlign = "center";
+        // ctx.textBaseline = "middle";
+        // ctx.fillStyle = "hsla(0, 0%, 0%, 0.3)";
+        // ctx.fillText(strikers[this.#strikerIdx].name, this.#xPos, this.#yPos);
+        // ctx.closePath();
     }
 }

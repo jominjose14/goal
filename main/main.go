@@ -17,6 +17,13 @@ func rootHandler(writer http.ResponseWriter, req *http.Request) {
 	http.Redirect(writer, req, "/public/index.html", http.StatusSeeOther)
 }
 
+var upgrader = websocket.Upgrader{
+	// CheckOrigin: func(r *http.Request) bool {
+	// 	// Allow connections from any origin (useful for development)
+	// 	return true
+	// },
+}
+
 type handshakeReqPayload struct {
 	Channel  string `json:"channel"`
 	UserName string `json:"userName"`
@@ -119,13 +126,7 @@ type roomPayload struct {
 	RoomName string `json:"roomName"`
 	UserName string `json:"userName"`
 	Team     string `json:"team"`
-}
-
-var upgrader = websocket.Upgrader{
-	// CheckOrigin: func(r *http.Request) bool {
-	// 	// Allow connections from any origin (useful for development)
-	// 	return true
-	// },
+	Striker  int    `json:"striker"`
 }
 
 func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
@@ -140,6 +141,13 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	var payload roomPayload
 	err := decoder.Decode(&payload)
 	if err != nil {
+		log.Println("[ERROR]", err)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if payload.RoomName == "" || payload.UserName == "" || payload.Team == "" {
+		err := errors.New("invalid create room request since fields missing in payload")
 		log.Println("[ERROR]", err)
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
@@ -162,8 +170,14 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 	}
 
 	userPtr.team = payload.Team
+	userPtr.striker = payload.Striker
 
-	newRoom := room{name: payload.RoomName, host: userPtr, members: &userArray{slice: make([]*user, 0, maxUsersPerRoom)}, stateChannel: make(chan *state)}
+	newRoom := room{
+		name:         payload.RoomName,
+		host:         userPtr,
+		members:      &userArray{slice: make([]*user, 0, maxUsersPerRoom)},
+		stateChannel: make(chan *state),
+	}
 
 	err = newRoom.addMember(userPtr)
 	if err != nil {
@@ -194,6 +208,13 @@ func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	if payload.RoomName == "" || payload.UserName == "" || payload.Team == "" {
+		err := errors.New("invalid join room request since fields missing in payload")
+		log.Println("[ERROR]", err)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	_, roomPtr, err := rooms.find(payload.RoomName)
 	if err != nil {
 		err := errors.New("invalid room name")
@@ -210,7 +231,34 @@ func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	userPtr.team = payload.Team
+	// verify and assign team to user
+	leftTeamCount, rightTeamCount := roomPtr.getTeamCounts()
+	if payload.Team == "left" && leftTeamCount == maxUsersPerTeam || payload.Team == "right" && rightTeamCount == maxUsersPerTeam {
+		err := fmt.Errorf("%s team is full", payload.Team)
+		log.Println("[ERROR]", err)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	} else {
+		userPtr.team = payload.Team
+	}
+
+	// verify and assign striker to user
+	availableStrikers := roomPtr.getAvailableStrikers()
+	isStrikerAvailable := false
+	for _, striker := range availableStrikers {
+		if striker == payload.Striker {
+			isStrikerAvailable = true
+			break
+		}
+	}
+	if !isStrikerAvailable {
+		err := fmt.Errorf("striker is taken")
+		log.Println("[ERROR]", err)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	} else {
+		userPtr.striker = payload.Striker
+	}
 
 	err = roomPtr.addMember(userPtr)
 	if err != nil {
@@ -267,6 +315,9 @@ func main() {
 	}
 	log.SetOutput(file)
 	go rotateLogs(logFile)
+
+	// test setup
+	// createTestRooms()
 
 	// route handlers
 	publicPath := filepath.Join(serverDir, "..", "public")

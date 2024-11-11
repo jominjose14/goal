@@ -5,6 +5,7 @@ type state struct {
 	UserName   string  `json:"userName"`
 	IsHost     bool    `json:"isHost"`
 	Team       string  `json:"team"`
+	Striker    int     `json:"striker"`
 	PlayerXPos float64 `json:"playerXPos"`
 	PlayerYPos float64 `json:"playerYPos"`
 	PlayerXVel float64 `json:"playerXVel"`
