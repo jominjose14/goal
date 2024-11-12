@@ -1,7 +1,7 @@
 import {
     $canvas, aiPlayerAccel,
     boardRinkFractionX,
-    boardRinkFractionY,
+    boardRinkFractionY, fps,
     mainPlayerVelMultiplier, maxUsersPerRoom,
     playerRadiusFraction,
     state, strikers
@@ -14,6 +14,7 @@ export default class Player {
     #strikerIdx;
     #team;
     #type; // main OR ai OR remote
+    #intelligence;
     #xPos;
     #yPos;
     #timestampToMeasureVel = null;
@@ -26,6 +27,7 @@ export default class Player {
         this.#strikerIdx = strikerIdx;
         this.#team = team;
         this.#type = type;
+        this.#intelligence = state.difficulty;
 
         this.resetRadius();
     }
@@ -62,6 +64,10 @@ export default class Player {
         return this.#team;
     }
 
+    get intelligence() {
+        return this.#intelligence;
+    }
+
     set name(name) {
         this.#name = name;
     }
@@ -73,6 +79,11 @@ export default class Player {
 
     set team(team) {
         this.#team = team;
+    }
+
+    set intelligence(intelligence) {
+        if(intelligence !== "Easy" && intelligence !== "Medium" && intelligence !== "Hard") return;
+        this.#intelligence = intelligence;
     }
 
     set xPos(xPos) {
@@ -193,73 +204,83 @@ export default class Player {
 
         if(this.xPos <= xBoundStart || xBoundEnd <= this.xPos) {
             this.xVel = 0;
+            this.xPos = this.xPos <= xBoundStart ? xBoundStart + 1 : xBoundEnd - 1;
         }
 
         if(this.yPos <= yBoundStart || yBoundEnd <= this.yPos) {
             this.yVel = 0;
+            this.yPos = this.yPos <= yBoundStart ? yBoundStart + 1 : yBoundEnd - 1;
         }
     }
 
     easyAiUpdate() {
-        if(this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2 || this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius) {
-            this.xVel = 0;
-            this.yVel = 0;
+        // wait for a human player to make first move
+        if(state.puck.xPos === $canvas.width/2 && state.puck.yPos === $canvas.height/2) return;
+
+        const isPuckOnOpponentSide = this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2 || this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius;
+        if(isPuckOnOpponentSide) {
+            this.xVel *= 0.99;
+            this.yVel *= 0.99;
             return;
         }
 
-        if(this.#team === "right" && -1 < Math.sign(state.puck.xVel) || this.#team === "left" && Math.sign(state.puck.xVel) < 1) {
-            const yPosDiff = this.yPos - state.puck.yPos;
-            if(Math.abs(yPosDiff) < this.radius + state.puck.radius) {
-                this.yVel = 0;
+        const isPuckMovingTowardsSelfSide = this.#team === "right" && -1 < Math.sign(state.puck.xVel) || this.#team === "left" && Math.sign(state.puck.xVel) < 1
+        if(isPuckMovingTowardsSelfSide) {
+            const dy = state.puck.yPos - this.yPos;
+            if(Math.abs(dy) <= 0.8 * (this.radius + state.puck.radius)) {
+                this.yVel *= 0.99;
             } else {
-                this.yVel += -Math.sign(yPosDiff) * aiPlayerAccel; // move towards puck
+                const multiplier = 0.2;
+                this.yVel = multiplier * dy;
             }
-        } else {
-            const yPosDiff = this.yPos - state.puck.yPos;
-            this.yVel += Math.sign(yPosDiff) * 3 * aiPlayerAccel; // move away from puck (allow it to go towards opposite side)
         }
 
         this.xPos = this.#team === "right" ? 0.9 * $canvas.width : 0.1 * $canvas.width;
         this.yPos += this.yVel;
+
+        const thresholdReplySpeed = 10 * 60/fps;
+        this.xVel = (this.team === "right" ? -1 : 1) * Math.max(thresholdReplySpeed, Math.abs(this.xVel));
+        // this.yVel = (state.puck.yPos < this.yPos ? -1 : 1) * Math.max(thresholdReplySpeed, Math.abs(this.yVel));
     }
 
     mediumAiUpdate() {
-        if(this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2) {
-            this.xVel += aiPlayerAccel;
+        // wait for a human player to make first move
+        if(state.puck.xPos === $canvas.width/2 && state.puck.yPos === $canvas.height/2) return;
 
-            if(this.yPos + this.radius === $canvas.height/2) {
-                this.yVel = 0;
-            } else if(this.yPos + this.radius < $canvas.height/2) {
-                this.yVel += aiPlayerAccel;
-            } else {
-                this.yVel -= aiPlayerAccel;
-            }
-        } else if(this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius) {
-            this.xVel -= aiPlayerAccel;
+        const isPuckOnOpponentSide = this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2 || this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius;
+        const isPuckBtwStrikerAndGoal = this.#team === "right" && this.xPos < state.puck.xPos || this.#team === "left" && state.puck.xPos < this.xPos;
+        const isPuckMovingAwayFromGoal = this.#team === "right" && Math.sign(state.puck.xVel) === -1 || this.#team === "left" && Math.sign(state.puck.xVel) === 1;
+        const thresholdReplySpeed = 10 * fps/60;
 
-            if(this.yPos + this.radius === $canvas.height/2) {
-                this.yVel = 0;
-            } else if(this.yPos + this.radius < $canvas.height/2) {
-                this.yVel += aiPlayerAccel;
-            } else {
-                this.yVel -= aiPlayerAccel;
+        if(isPuckOnOpponentSide || isPuckBtwStrikerAndGoal) {
+            const multiplier = isPuckOnOpponentSide ? 0.05 : 0.2;
+
+            if(this.#team === "right") {
+                const dx = ($canvas.width * (1 - boardRinkFractionX) - this.radius) - this.xPos;
+                this.xVel = multiplier * dx;
+            } else if(this.#team === "left") {
+                const dx = ($canvas.width * boardRinkFractionX + this.radius) - this.xPos;
+                this.xVel = multiplier * dx;
             }
+
+            this.yVel = multiplier * ($canvas.height/2 - this.yPos);
+        } else if(isPuckMovingAwayFromGoal && thresholdReplySpeed < Math.abs(state.puck.xVel)) {
+            // work is done, so just chill
+            this.xVel *= 0.99;
+            this.yVel *= 0.99;
         } else {
-            if(this.#team === "right" && this.xPos < state.puck.xPos || this.#team === "left" && state.puck.xPos < this.xPos) {
-                this.reset();
-            } else {
-                if((state.puck.xPos + state.puck.radius) < this.xPos) {
-                    this.xVel -= aiPlayerAccel;
-                } else {
-                    this.xVel += aiPlayerAccel;
-                }
+            // puck is moving away from goal at speed less than thresholdReplySpeed
+            // OR puck is still
+            // OR puck is moving towards own goal (striker between puck and goal)
+            // In all 3 cases, player's reaction: chase puck
 
-                if((state.puck.yPos + state.puck.radius) < this.yPos) {
-                    this.yVel -= aiPlayerAccel;
-                } else {
-                    this.yVel += aiPlayerAccel;
-                }
-            }
+            const dx = state.puck.xPos - this.xPos;
+            const dy = state.puck.yPos - this.yPos;
+            const xMultiplier = 0.015;
+            const yMultiplier = 0.1;
+
+            this.xVel += xMultiplier * dx; // provides acceleration to hit puck towards opponent's side, hence the use of += operator
+            this.yVel = yMultiplier * dy; // provides precision, hence the use of = operator
         }
 
         this.xPos += this.xVel;
@@ -269,22 +290,22 @@ export default class Player {
     hardAiUpdate() {
         if(state.isGoal) return;
 
-        const x = 0.9 * $canvas.width;
-        let y = state.puck.yPos;
-
-        // Edge case: if puck is inside ai player's striker, temporarily displace striker to allow puck to escape
-        if(this.xPos === state.puck.xPos && this.yPos === state.puck.yPos) {
-            y = $canvas.height/2 < state.puck.yPos ? 0.2 * $canvas.height : 0.8 * $canvas.height;
-        }
+        const x = this.team === "right" ? 0.9 * $canvas.width : 0.1 * $canvas.width;
+        const diff = $canvas.height/2 - state.puck.yPos;
+        const maxDiff = ($canvas.height * (1 - 2 * boardRinkFractionY) - 2 * this.radius) / 2;
+        let y = state.puck.yPos + state.puck.radius * diff / maxDiff;
 
         this.updatePosViaUserInput(x, y);
+
+        this.xVel = (this.team === "right" ? -1 : 1) * Math.max(10 * 60/fps, Math.abs(this.xVel));
+        this.yVel = (state.puck.yPos < this.yPos ? -1 : 1) * Math.max(10 * 60/fps, Math.abs(this.yVel));
     }
 
     update() {
         if(this.#type === "ai") {
             this.onAiCollideWithBounds();
 
-            switch(state.difficulty) {
+            switch(this.#intelligence) {
                 case "Easy": {
                     this.easyAiUpdate();
                 }

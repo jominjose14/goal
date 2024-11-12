@@ -1,8 +1,8 @@
 import {
     $fpsDisplay,
     $pauseMenu,
-    $settingsMenu,
-    $welcomeMenu,
+    // $settingsMenu,
+    $homeMenu,
     soundUrls,
     $fullscreenToggles,
     isDebugMode,
@@ -12,14 +12,14 @@ import {
     $rotateScreenPopup,
     $onlineMenu,
     $createRoomMenu,
-    $joinRoomMenu, masterGain, strikerImgUrls,
+    $joinRoomMenu, masterGain, strikerImgUrls, $offlineMenu,
 } from "./scripts/global.js";
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {
     exitGame, closeModal, connectUsingUserName, createRoom, resetPostDisconnect, getRoomList, hide, isHandheldDevice,
     loadSound, onMouseMove, onResize, onResume, onTouchMove, playSound, resizeBoard, show,
-    startLoading, startOfflineGame, stopLoading, joinRoom
+    startLoading, startOfflineGame, stopLoading, joinRoom, capitalizeFirstLetter
 } from "./scripts/functions.js";
 
 // Call main
@@ -30,12 +30,12 @@ function main() {
     loadSounds();
     onChangeOrientation();
     attachEventListeners();
+    initializeParameters();
 
-    document.getElementById("difficulty-selector").textContent = state.difficulty;
-
-    state.mainPlayer = new Player("You", 0, "left", "main");
+    state.mainPlayer = new Player("You", 0, state.offlineTeam, "main");
     state.mainPlayer.reset();
     state.mainPlayer.addToBoard();
+
     state.puck = new Puck(0, 0, 20, "hsla(0, 0%, 100%, 1)");
 
     if(isHandheldDevice()) {
@@ -65,6 +65,12 @@ function loadSounds() {
     }
 }
 
+function initializeParameters() {
+    document.getElementById("offline-team-selector").textContent = state.offlineTeam;
+    document.getElementById("difficulty-selector").textContent = state.difficulty;
+    document.getElementById("players-per-team-selector").textContent = state.playersPerTeam;
+}
+
 function attachEventListeners() {
     window.screen.orientation.addEventListener("change", event => onChangeOrientation(event));
 
@@ -74,8 +80,8 @@ function attachEventListeners() {
         playSound("buttonPress", false);
     }));
 
-    $welcomeMenu.querySelector(".online-game-btn").onclick = onClickOnlineGameBtn;
-    $welcomeMenu.querySelector(".offline-game-btn").onclick = startOfflineGame;
+    $homeMenu.querySelector(".online-game-btn").onclick = onClickOnlineGameBtn;
+    $homeMenu.querySelector(".offline-game-btn").onclick = onClickOfflineGameBtn;
 
     for(const muteToggle of $muteToggles) {
         muteToggle.onclick = toggleMute;
@@ -85,8 +91,8 @@ function attachEventListeners() {
         fullscreenToggle.onclick = toggleFullscreen;
     }
 
-    const $settingsBtn = document.querySelector(".settings-btn");
-    $settingsBtn.onclick = openSettings;
+    // const $settingsBtn = document.querySelector(".settings-btn");
+    // $settingsBtn.onclick = openSettings;
 
     for(const $backBtn of document.querySelectorAll(".menu .home-btn")) {
         $backBtn.onclick = (event) => onClickHomeBtn(event.target);
@@ -95,7 +101,9 @@ function attachEventListeners() {
     for(const $selector of document.querySelectorAll(".menu .selector")) {
         $selector.addEventListener("click", (event) => {
             handleSelectorClick(event.target);
-            if(event.target.id === "difficulty-selector") {
+            if(event.target.id === "offline-team-selector") {
+                onChangeOfflineTeam();
+            } else if(event.target.id === "difficulty-selector") {
                 onChangeDifficulty();
             } else if(event.target.id === "players-per-team-selector") {
                 onChangePlayersPerTeam();
@@ -115,6 +123,8 @@ function attachEventListeners() {
         });
     }
 
+    $offlineMenu.querySelector(".start-offline-game-btn").onclick = startOfflineGame;
+
     $onlineMenu.querySelector(".host-menu-btn").onclick = onClickCreateRoomMenuBtn;
     $onlineMenu.querySelector(".join-menu-btn").onclick = onClickJoinRoomMenuBtn;
     $createRoomMenu.querySelector(".create-room-btn").onclick = onClickCreateRoomBtn;
@@ -130,10 +140,15 @@ function attachEventListeners() {
 }
 
 function onClickOnlineGameBtn() {
-    hide($welcomeMenu);
+    hide($homeMenu);
     $onlineMenu.querySelector(".error-msg").textContent = "";
     show($onlineMenu);
     document.getElementById("user-name").focus();
+}
+
+function onClickOfflineGameBtn() {
+    hide($homeMenu);
+    show($offlineMenu);
 }
 
 function toggleMute() {
@@ -168,10 +183,10 @@ function toggleFullscreen() {
     }
 }
 
-function openSettings() {
-    hide($welcomeMenu);
-    show($settingsMenu);
-}
+// function openSettings() {
+//     hide($homeMenu);
+//     show($settingsMenu);
+// }
 
 function onClickHomeBtn($element) {
     if(state.webSocketConn !== null) {
@@ -181,7 +196,7 @@ function onClickHomeBtn($element) {
 
     const $currMenu = $element.closest(".menu");
     hide($currMenu);
-    show($welcomeMenu);
+    show($homeMenu);
 }
 
 function handleSelectorClick($element) {
@@ -219,6 +234,10 @@ function onChangeOrientation(event) {
         hide($rotateScreenPopup);
         closeModal($rotateScreenPopup);
     }
+}
+
+function onChangeOfflineTeam() {
+    state.offlineTeam = document.getElementById("offline-team-selector").textContent;
 }
 
 function onChangeDifficulty() {

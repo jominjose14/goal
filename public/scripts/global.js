@@ -8,11 +8,11 @@ export const maxRoomNameLength = 10;
 export const maxUsersPerRoom = 4;
 export const maxUsersPerTeam = 2;
 export const webSocketChannels = ["handshake", "memberLeft", "reassignHost", "state"];
-export const joinPauseDuration = 250; // measured in milliseconds
 
 // html elements
-export const $welcomeMenu = document.querySelector(".menu.welcome");
-export const $settingsMenu = document.querySelector(".menu.settings");
+export const $homeMenu = document.querySelector(".menu.home");
+// export const $settingsMenu = document.querySelector(".menu.settings");
+export const $offlineMenu = document.querySelector(".menu.offline");
 export const $onlineMenu = document.querySelector(".menu.online");
 export const $createRoomMenu = document.querySelector(".menu.host");
 export const $joinRoomMenu = document.querySelector(".menu.join");
@@ -22,8 +22,8 @@ export const $message = document.querySelector(".message");
 export const $scores = document.querySelector(".scores");
 export const $leftScore = document.getElementById("left-score");
 export const $rightScore = document.getElementById("right-score");
-export const $muteToggles = [document.querySelector(".menu.welcome .mute-toggle-btn"), document.querySelector(".menu.pause .mute-toggle-btn")];
-export const $fullscreenToggles = [document.querySelector(".menu.welcome .fullscreen-toggle-btn"), document.querySelector(".menu.pause .fullscreen-toggle-btn")];
+export const $muteToggles = [document.querySelector(".menu.home .mute-toggle-btn"), document.querySelector(".menu.pause .mute-toggle-btn")];
+export const $fullscreenToggles = [document.querySelector(".menu.home .fullscreen-toggle-btn"), document.querySelector(".menu.pause .fullscreen-toggle-btn")];
 export const $fpsDisplay = document.querySelector(".fps-display");
 export const $loadingSpinner = document.querySelector(".loading-spinner")
 export const $toast = document.querySelector(".toast")
@@ -143,8 +143,9 @@ export const state = {
     allPlayers: [],
     nonMainPlayers: [],
     puck: null,
+    offlineTeam: "Left",
     difficulty: "Medium",
-    playersPerTeam: "One",
-    theme: "Dark",
+    playersPerTeam: "Two",
+    // theme: "Dark",
     toastTimeoutId: -1,
 };

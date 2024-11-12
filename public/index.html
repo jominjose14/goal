@@ -15,7 +15,7 @@
     <script src="index.js" type="module" defer></script>
 </head>
 <body>
-    <div class="menu welcome">
+    <div class="menu home">
         <h1 class="game-title">Goal</h1>
         <div class="text-btns">
             <button class="menu-btn text-btn online-game-btn">Online</button>
@@ -28,20 +28,26 @@
             <button class="icon-btn fullscreen-toggle-btn">
                 <img src="images/fullscreen.svg" alt="Fullscreen Toggle">
             </button>
-            <button class="icon-btn settings-btn">
-                <img src="images/settings.svg" alt="Settings">
-            </button>
+<!--            <button class="icon-btn settings-btn">-->
+<!--                <img src="images/settings.svg" alt="Settings">-->
+<!--            </button>-->
         </div>
     </div>
 
-    <div class="menu settings hidden">
-        <h1>Settings</h1>
+    <div class="menu offline hidden">
+        <h1>Offline</h1>
+        <div class="field">
+            <label for="offline-team-selector">Team</label>
+            <button id="offline-team-selector" class="menu-btn selector" data-values="Left,Right">
+                Left
+            </button>
+        </div>
         <div class="field">
             <label for="difficulty-selector">
                 Difficulty
             </label>
             <button id="difficulty-selector" class="menu-btn selector" data-values="Easy,Medium,Hard">
-                Easy
+                Medium
             </button>
         </div>
         <div class="field">
@@ -50,14 +56,22 @@
                 One
             </button>
         </div>
-        <div class="field">
-            <label for="theme-selector">Theme</label>
-            <button id="theme-selector" class="menu-btn selector" data-values="Light,Dark">
-                Dark
-            </button>
+        <div class="field action-btns">
+            <button class="menu-btn start-offline-game-btn">Start</button>
+            <button class="menu-btn home-btn">Back</button>
         </div>
-        <button class="menu-btn home-btn">Back</button>
     </div>
+
+<!--    <div class="menu settings hidden">-->
+<!--        <h1>Settings</h1>-->
+<!--        <div class="field">-->
+<!--            <label for="theme-selector">Theme</label>-->
+<!--            <button id="theme-selector" class="menu-btn selector" data-values="Light,Dark">-->
+<!--                Dark-->
+<!--            </button>-->
+<!--        </div>-->
+<!--        <button class="menu-btn home-btn">Back</button>-->
+<!--    </div>-->
 
     <div class="menu online hidden">
         <h1>Online</h1>
@@ -68,7 +82,7 @@
         </div>
         <button class="menu-btn host-menu-btn">Host</button>
         <button class="menu-btn join-menu-btn">Join</button>
-        <button class="menu-btn home-btn">Home</button>
+        <button class="menu-btn home-btn">Back</button>
     </div>
 
     <div class="menu host hidden">

@@ -9,7 +9,7 @@ import {
     $pauseMenu,
     $rightScore,
     $scores, $toast,
-    $welcomeMenu,
+    $homeMenu,
     audioContext,
     boardRinkFractionX,
     buffers,
@@ -18,7 +18,7 @@ import {
     masterGain, maxRoomNameLength,
     maxUserNameLength, maxUsersPerRoom,
     millisecondsBetweenFrames,
-    state, allStrikerIndices, allTeams, toastDuration,
+    state, allStrikerIndices, allTeams, toastDuration, $offlineMenu,
 } from "./global.js";
 
 // game logic
@@ -116,7 +116,7 @@ export function startOfflineGame() {
     state.isOnlineGame = false;
     state.isPaused = false;
 
-    hide($welcomeMenu);
+    hide($offlineMenu);
     show($canvas);
     show($message);
     show($scores);
@@ -124,11 +124,45 @@ export function startOfflineGame() {
     document.addEventListener("keypress", event => onPauseUsingKeyPress(event));
     document.addEventListener("dblclick", onPauseUsingDoubleClick);
 
-    state.mainPlayer.team = "left";
+    state.mainPlayer.team = state.offlineTeam.toLowerCase();
     state.mainPlayer.reset();
-    const aiPlayer = new Player("Tom", 1, "right", "ai");
-    aiPlayer.reset();
-    aiPlayer.addToBoard();
+
+    const mainPlayerTeam = state.offlineTeam.toLowerCase();
+    const opponentTeam = mainPlayerTeam === "left" ? "right" : "left";
+
+    if(state.playersPerTeam === "One") {
+        const aiOpponent = new Player("Tom", 1, opponentTeam, "ai");
+        aiOpponent.reset();
+        aiOpponent.addToBoard();
+        aiOpponent.intelligence = state.difficulty;
+    } else if(state.playersPerTeam === "Two") {
+        const aiTeamMate = new Player("Tom", 1, mainPlayerTeam, "ai");
+        aiTeamMate.reset();
+        aiTeamMate.addToBoard();
+
+        const aiOpponentOne = new Player("Laura", 2, opponentTeam, "ai");
+        aiOpponentOne.reset();
+        aiOpponentOne.addToBoard();
+
+        const aiOpponentTwo = new Player("Sophie", 3, opponentTeam, "ai");
+        aiOpponentTwo.reset();
+        aiOpponentTwo.addToBoard();
+
+        if(state.difficulty === "Easy") {
+            aiTeamMate.intelligence = "Easy";
+            aiOpponentOne.intelligence = "Easy";
+            aiOpponentTwo.intelligence = "Medium";
+        } else if(state.difficulty === "Medium") {
+            aiTeamMate.intelligence = "Easy";
+            aiOpponentOne.intelligence = "Easy";
+            aiOpponentTwo.intelligence = "Medium";
+        } else if(state.difficulty === "Hard") {
+            aiTeamMate.intelligence = "Easy";
+            aiOpponentOne.intelligence = "Medium";
+            aiOpponentTwo.intelligence = "Hard";
+        }
+    }
+
     newRound();
 }
 
@@ -361,6 +395,8 @@ export function exitGame($element) {
     state.allPlayers = [state.mainPlayer];
     state.nonMainPlayers = [];
 
+    state.mainPlayer.name = "You";
+
     document.removeEventListener("keypress", onPauseUsingKeyPress);
     document.removeEventListener("dblclick", onPauseUsingDoubleClick);
 
@@ -371,7 +407,7 @@ export function exitGame($element) {
     hide($pauseMenu);
     hide($message);
     hide($scores);
-    show($welcomeMenu);
+    show($homeMenu);
 }
 
 export function closeModal($element) {

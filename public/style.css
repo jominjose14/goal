@@ -134,12 +134,12 @@ body {
         }
     }
 
-    .home-btn {
-        margin-top: 1em;
-    }
+    /*.home-btn {*/
+    /*    margin-top: 1em;*/
+    /*}*/
 }
 
-.welcome {
+.home {
     padding-bottom: 2.75em;
 
     .game-title {
@@ -195,10 +195,19 @@ body {
     }
 }
 
-.settings {
+.offline {
     gap: 3vmin;
     padding-inline: 3em;
+
+    .action-btns {
+        margin-top: 1em;
+    }
 }
+
+/*.settings {*/
+/*    gap: 3vmin;*/
+/*    padding-inline: 3em;*/
+/*}*/
 
 .menu.online, .menu.host, .menu.join {
     .error-msg {
@@ -214,10 +223,6 @@ body {
 .menu.host {
     .create-room-btn {
         margin-top: 0.5em;
-    }
-
-    .home-btn {
-        margin-top: 0;
     }
 }
 
@@ -266,10 +271,6 @@ body {
             justify-items: center;
             align-items: center;
         }
-    }
-
-    .home-btn {
-        margin-top: 0;
     }
 }
 
