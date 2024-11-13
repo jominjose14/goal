@@ -1,9 +1,10 @@
-import {$canvas, $joinRoomMenu, domain, isDebugMode, state} from "../../public/scripts/global";
-import {startLoading, stopLoading} from "../../public/scripts/functions";
+import {$canvas, $joinRoomMenu, domain, IS_DEBUG_MODE, state} from "../../public/scripts/global";
+
+import {startLoading, stopLoading} from "../../public/scripts/util";
 
 export async function getRoomList() {
     const $errorMsg = $joinRoomMenu.querySelector(".error-msg");
-    const protocol = isDebugMode ? "http" : "https";
+    const protocol = IS_DEBUG_MODE ? "http" : "https";
     let response = null;
 
     try {

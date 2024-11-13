@@ -1,14 +1,15 @@
 import {
     $canvas,
-    boardRinkFractionX,
-    boardRinkFractionY,
+    X_BOARD_RINK_FRACTION,
+    Y_BOARD_RINK_FRACTION,
     state,
-    xPuckMaxVelDividend,
-    yPuckMaxVelDividend,
-    puckMinVel,
-    puckRadiusFraction, stuckPuckMaxDuration, puckPlayerCollisionCooldown,
+    X_PUCK_MAX_VEL_DIVIDEND,
+    Y_PUCK_MAX_VEL_DIVIDEND,
+    PUCK_MIN_SPEED,
+    PUCK_RADIUS_FRACTION, STUCK_PUCK_MAX_DURATION, PUCK_PLAYER_COLLISION_COOLDOWN,
 } from "./global.js";
-import {clamp, handleGoal, playSound, resetStuckPuckMetrics} from "./functions.js";
+import {handleGoal, resetStuckPuckMetrics} from "./game.js";
+import {clamp, playSound} from "./util.js";
 
 export default class Puck {
     #xPos;
@@ -58,18 +59,18 @@ export default class Puck {
 
     set xVel(xVel) {
         if(isNaN(xVel)) return;
-        if(Math.abs(xVel) < puckMinVel) xVel = Math.sign(xVel) * puckMinVel;
-        this.#xVel = clamp(-$canvas.width/xPuckMaxVelDividend, xVel, $canvas.width/xPuckMaxVelDividend);
+        if(Math.abs(xVel) < PUCK_MIN_SPEED) xVel = Math.sign(xVel) * PUCK_MIN_SPEED;
+        this.#xVel = clamp(-$canvas.width/X_PUCK_MAX_VEL_DIVIDEND, xVel, $canvas.width/X_PUCK_MAX_VEL_DIVIDEND);
     }
 
     set yVel(yVel) {
         if(isNaN(yVel)) return;
-        if(Math.abs(yVel) < puckMinVel) yVel = Math.sign(yVel) * puckMinVel;
-        this.#yVel = clamp(-$canvas.height/yPuckMaxVelDividend, yVel, $canvas.height/yPuckMaxVelDividend);
+        if(Math.abs(yVel) < PUCK_MIN_SPEED) yVel = Math.sign(yVel) * PUCK_MIN_SPEED;
+        this.#yVel = clamp(-$canvas.height/Y_PUCK_MAX_VEL_DIVIDEND, yVel, $canvas.height/Y_PUCK_MAX_VEL_DIVIDEND);
     }
 
     resetRadius() {
-        this.#radius = puckRadiusFraction * $canvas.width;
+        this.#radius = PUCK_RADIUS_FRACTION * $canvas.width;
     }
 
     adaptToScreen() {
@@ -110,7 +111,7 @@ export default class Puck {
             this.xPos += this.xVel;
             this.yPos += this.yVel;
 
-            if(stuckPuckMaxDuration <= state.stuckPuckMetrics.stuckDuration) {
+            if(STUCK_PUCK_MAX_DURATION <= state.stuckPuckMetrics.stuckDuration) {
                 this.reset();
                 resetStuckPuckMetrics();
             }
@@ -125,10 +126,10 @@ export default class Puck {
     }
 
     handleBoardCollisions() {
-        const xBoardBoundStart = boardRinkFractionX * $canvas.width + this.#radius;
-        const xBoardBoundEnd = $canvas.width * (1 - boardRinkFractionX) - this.#radius;
-        const yBoardBoundStart = boardRinkFractionY * $canvas.height + this.#radius;
-        const yBoardBoundEnd = $canvas.height * (1 - boardRinkFractionY) - this.#radius;
+        const xBoardBoundStart = X_BOARD_RINK_FRACTION * $canvas.width + this.#radius;
+        const xBoardBoundEnd = $canvas.width * (1 - X_BOARD_RINK_FRACTION) - this.#radius;
+        const yBoardBoundStart = Y_BOARD_RINK_FRACTION * $canvas.height + this.#radius;
+        const yBoardBoundEnd = $canvas.height * (1 - Y_BOARD_RINK_FRACTION) - this.#radius;
         const yGoalStart = (320/900) * $canvas.height + 2 * this.#radius;
         const yGoalEnd = (580/900) * $canvas.height - 2 * this.#radius;
 
@@ -170,7 +171,7 @@ export default class Puck {
             const isColliding = distance <= radiiSum;
 
             const durationSinceLastCollision = window.performance.now() - player.prevCollisionTimestamp;
-            const mustSkipCollision = durationSinceLastCollision < puckPlayerCollisionCooldown;
+            const mustSkipCollision = durationSinceLastCollision < PUCK_PLAYER_COLLISION_COOLDOWN;
 
             if(!isColliding || mustSkipCollision) continue;
 

@@ -1,5 +1,6 @@
-import {$canvas, aiPlayerAccel, boardRinkFractionY, puckCollisionEscapeMultiplier, state} from "../../public/scripts/global";
-import {playSound} from "../../public/scripts/functions";
+import {$canvas, AI_PLAYER_ACCEL, Y_BOARD_RINK_FRACTION, PUCK_COLLISION_ESCAPE_MULTIPLIER, state} from "../../public/scripts/global";
+
+import {playSound} from "../../public/scripts/util";
 
 function rotate(x, y, sin, cos, reverse) {
     return {
@@ -138,8 +139,8 @@ function beforeAmeerCallCollisionLogic() {
     }
 
     // Move puck out of collision range
-    this.xPos += player.xVel * puckCollisionEscapeMultiplier;
-    this.yPos += player.yVel * puckCollisionEscapeMultiplier;
+    this.xPos += player.xVel * PUCK_COLLISION_ESCAPE_MULTIPLIER;
+    this.yPos += player.yVel * PUCK_COLLISION_ESCAPE_MULTIPLIER;
 }
 
 function ameerExcelCollisionLogic() {
@@ -147,8 +148,8 @@ function ameerExcelCollisionLogic() {
     this.yVel = player.yVel + (player.yVel - this.yVel);
 
     // Move puck out of collision range
-    this.xPos += player.xVel * puckCollisionEscapeMultiplier;
-    this.yPos += player.yVel * puckCollisionEscapeMultiplier;
+    this.xPos += player.xVel * PUCK_COLLISION_ESCAPE_MULTIPLIER;
+    this.yPos += player.yVel * PUCK_COLLISION_ESCAPE_MULTIPLIER;
 }
 
 function ameerWhatsappImgCollisionLogic() {
@@ -229,7 +230,7 @@ function accelBasedLineDefenseAi() {
     if(Math.abs(yPosDiff) < this.radius + state.puck.radius) {
         this.yVel = 0;
     } else {
-        this.yVel += -Math.sign(yPosDiff) * aiPlayerAccel;
+        this.yVel += -Math.sign(yPosDiff) * AI_PLAYER_ACCEL;
     }
 
     this.xPos = this.#team === "right" ? 0.9 * $canvas.width : 0.1 * $canvas.width;
@@ -242,7 +243,7 @@ function circularDefenseAiLogic() {
     if(Math.abs(yPosDiff) < this.radius + state.puck.radius) {
         this.yVel = 0;
     } else {
-        this.yVel += -Math.sign(yPosDiff) * aiPlayerAccel;
+        this.yVel += -Math.sign(yPosDiff) * AI_PLAYER_ACCEL;
     }
 
     this.yPos += this.yVel;
@@ -250,30 +251,30 @@ function circularDefenseAiLogic() {
     // find xPos on circular defensive path
     const xCenter = $canvas.width;
     const yCenter = $canvas.height/2;
-    const radius = Math.min(0.35 * $canvas.width/2, $canvas.height * (0.5 - 2*boardRinkFractionY));
+    const radius = Math.min(0.35 * $canvas.width/2, $canvas.height * (0.5 - 2*Y_BOARD_RINK_FRACTION));
     this.xPos = -Math.sqrt((radius + this.yPos - yCenter) * (radius - this.yPos + yCenter)) + xCenter;
 }
 
 function mediumAiWithOffsetFollow() {
     if(this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2) {
-        this.xVel += aiPlayerAccel;
+        this.xVel += AI_PLAYER_ACCEL;
 
         if(this.yPos + this.radius === $canvas.height/2) {
             this.yVel = 0;
         } else if(this.yPos + this.radius < $canvas.height/2) {
-            this.yVel += aiPlayerAccel;
+            this.yVel += AI_PLAYER_ACCEL;
         } else {
-            this.yVel -= aiPlayerAccel;
+            this.yVel -= AI_PLAYER_ACCEL;
         }
     } else if(this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius) {
-        this.xVel -= aiPlayerAccel;
+        this.xVel -= AI_PLAYER_ACCEL;
 
         if(this.yPos + this.radius === $canvas.height/2) {
             this.yVel = 0;
         } else if(this.yPos + this.radius < $canvas.height/2) {
-            this.yVel += aiPlayerAccel;
+            this.yVel += AI_PLAYER_ACCEL;
         } else {
-            this.yVel -= aiPlayerAccel;
+            this.yVel -= AI_PLAYER_ACCEL;
         }
     } else {
         if(this.#team === "right" && this.xPos < state.puck.xPos || this.#team === "left" && state.puck.xPos < this.xPos) {
@@ -283,22 +284,22 @@ function mediumAiWithOffsetFollow() {
             const mag = Math.sqrt(dx*dx + dy*dy);
 
             // accelerate towards offset point
-            this.xVel += dx * 3 * aiPlayerAccel / mag;
-            this.yVel += dy * 3 * aiPlayerAccel / mag;
+            this.xVel += dx * 3 * AI_PLAYER_ACCEL / mag;
+            this.yVel += dy * 3 * AI_PLAYER_ACCEL / mag;
         } else if(this.#team === "right" && Math.sign(state.puck.xVel) === -1 || this.#team === "left" && Math.sign(state.puck.xVel) === 1) {
             this.xVel = 0;
             this.yVel = 0;
         } else {
             if((state.puck.xPos + state.puck.radius) < this.xPos) {
-                this.xVel -= aiPlayerAccel;
+                this.xVel -= AI_PLAYER_ACCEL;
             } else {
-                this.xVel += aiPlayerAccel;
+                this.xVel += AI_PLAYER_ACCEL;
             }
 
             if((state.puck.yPos + state.puck.radius) < this.yPos) {
-                this.yVel -= aiPlayerAccel;
+                this.yVel -= AI_PLAYER_ACCEL;
             } else {
-                this.yVel += aiPlayerAccel;
+                this.yVel += AI_PLAYER_ACCEL;
             }
         }
     }
@@ -318,39 +319,39 @@ function nov11MediumAiUpdate() {
     if(state.puck.xPos === $canvas.width/2 && state.puck.yPos === $canvas.height/2) return;
 
     if(this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2) {
-        this.xVel += aiPlayerAccel;
+        this.xVel += AI_PLAYER_ACCEL;
 
         if(this.yPos + this.radius === $canvas.height/2) {
             this.yVel = 0;
         } else if(this.yPos + this.radius < $canvas.height/2) {
-            this.yVel += aiPlayerAccel;
+            this.yVel += AI_PLAYER_ACCEL;
         } else {
-            this.yVel -= aiPlayerAccel;
+            this.yVel -= AI_PLAYER_ACCEL;
         }
     } else if(this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius) {
-        this.xVel -= aiPlayerAccel;
+        this.xVel -= AI_PLAYER_ACCEL;
 
         if(this.yPos + this.radius === $canvas.height/2) {
             this.yVel = 0;
         } else if(this.yPos + this.radius < $canvas.height/2) {
-            this.yVel += aiPlayerAccel;
+            this.yVel += AI_PLAYER_ACCEL;
         } else {
-            this.yVel -= aiPlayerAccel;
+            this.yVel -= AI_PLAYER_ACCEL;
         }
     } else {
         if(this.#team === "right" && this.xPos < state.puck.xPos || this.#team === "left" && state.puck.xPos < this.xPos) {
             this.reset();
         } else {
             if((state.puck.xPos + state.puck.radius) < this.xPos) {
-                this.xVel -= aiPlayerAccel;
+                this.xVel -= AI_PLAYER_ACCEL;
             } else {
-                this.xVel += aiPlayerAccel;
+                this.xVel += AI_PLAYER_ACCEL;
             }
 
             if((state.puck.yPos + state.puck.radius) < this.yPos) {
-                this.yVel -= aiPlayerAccel;
+                this.yVel -= AI_PLAYER_ACCEL;
             } else {
-                this.yVel += aiPlayerAccel;
+                this.yVel += AI_PLAYER_ACCEL;
             }
         }
     }
