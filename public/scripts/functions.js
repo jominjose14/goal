@@ -18,7 +18,7 @@ import {
     masterGain, maxRoomNameLength,
     maxUserNameLength, maxUsersPerRoom,
     millisecondsBetweenFrames,
-    state, allStrikerIndices, allTeams, toastDuration, $offlineMenu,
+    state, allStrikerIndices, allTeams, toastDuration, $offlineMenu, fps,
 } from "./global.js";
 
 // game logic
@@ -57,7 +57,6 @@ function refreshCanvas() {
     // frame render logic
     state.puck.update();
     for (const player of state.allPlayers) player.update();
-    redrawVerticalRinkLines();
 
     if(isDebugMode) {
         state.fpsMetrics.canvasFpsCounter++;
@@ -280,6 +279,10 @@ export function newRound() {
 }
 
 export function handleGoal() {
+    const xGoalThresholdSpeed = 7 * fps/60;
+    state.puck.xVel = Math.sign(state.puck.xVel) * Math.max(xGoalThresholdSpeed, state.puck.xVel);
+    state.puck.yVel = 0;
+
     state.isGoal = true;
     playSound("goal", false);
 
@@ -316,32 +319,6 @@ export function resetStuckPuckMetrics() {
     state.stuckPuckMetrics.secondsCounter = 0;
     state.stuckPuckMetrics.stuckDuration = 0;
     state.stuckPuckMetrics.wasPuckOnLeftSide = false;
-}
-
-// this prevents puck from appearing above vertical rink lines as it passes into goal when coming in at a steep angle
-function redrawVerticalRinkLines() {
-    const rinkRadius = (60/900) * $canvas.height;
-    const ctx = state.context;
-
-    ctx.beginPath();
-
-    ctx.moveTo((5/1600) * $canvas.width,rinkRadius + (5/900) * $canvas.height);
-    ctx.lineTo((5/1600) * $canvas.width,(319/900) * $canvas.height - rinkRadius);
-
-    ctx.moveTo((5/1600) * $canvas.width,rinkRadius + (581/900) * $canvas.height);
-    ctx.lineTo((5/1600) * $canvas.width,(895/900) * $canvas.height - rinkRadius);
-
-    ctx.moveTo((1595/1600) * $canvas.width,rinkRadius + (5/900) * $canvas.height);
-    ctx.lineTo((1595/1600) * $canvas.width,(319/900) * $canvas.height - rinkRadius);
-
-    ctx.moveTo((1595/1600) * $canvas.width,rinkRadius + (581/900) * $canvas.height);
-    ctx.lineTo((1595/1600) * $canvas.width,(895/900) * $canvas.height - rinkRadius);
-
-    ctx.lineWidth = (11/1600) * $canvas.width;
-    ctx.strokeStyle = "hsla(0, 0%, 30%, 1)";
-    ctx.stroke();
-
-    ctx.closePath();
 }
 
 export function resizeBoard() {

@@ -253,7 +253,7 @@ export default class Player {
         const thresholdReplySpeed = 10 * fps/60;
 
         if(isPuckOnOpponentSide || isPuckBtwStrikerAndGoal) {
-            const multiplier = isPuckOnOpponentSide ? 0.05 : 0.2;
+            const multiplier = isPuckOnOpponentSide ? 0.05 : 0.1;
 
             if(this.#team === "right") {
                 const dx = ($canvas.width * (1 - boardRinkFractionX) - this.radius) - this.xPos;
@@ -276,11 +276,12 @@ export default class Player {
 
             const dx = state.puck.xPos - this.xPos;
             const dy = state.puck.yPos - this.yPos;
-            const xMultiplier = 0.015;
-            const yMultiplier = 0.1;
+            const xMultiplier = 0.0075;
+            const yMultiplier = 0.5;
+            const yError = 0.05 + 0.45 * Math.random();
 
             this.xVel += xMultiplier * dx; // provides acceleration to hit puck towards opponent's side, hence the use of += operator
-            this.yVel = yMultiplier * dy; // provides precision, hence the use of = operator
+            this.yVel = yMultiplier * dy * yError; // provides precision, hence the use of = operator
         }
 
         this.xPos += this.xVel;
