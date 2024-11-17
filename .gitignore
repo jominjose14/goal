@@ -2,6 +2,6 @@
 node_modules
 log
 *.log
-audio/old
-audio/original
-images/old
+dev/client/src/audio/old
+dev/client/src/audio/original
+dev/client/src/images/old
