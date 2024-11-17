@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg" href="images/favicon.svg">
+
+    <title>Goal</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Protest+Riot&family=Redressed&family=Rubik+Scribble&family=Sedgwick+Ave+Display&display=swap" rel="stylesheet">
+
+    <style>*{box-sizing:border-box;scrollbar-color:hsla(0,0%,100%,.15) transparent;scrollbar-width:thin;&::-webkit-scrollbar{width:.1dvw}&::-webkit-scrollbar-button{display:none}&::-webkit-scrollbar-thumb{background-color:hsla(0,0%,100%,.15);border-radius:1vmin}&::-webkit-scrollbar-thumb:hover{background-color:hsla(0,0%,100%,.2)}&::-webkit-scrollbar-track{background-color:transparent;width:.1dvw}}body,html{height:100dvh;margin:0;padding:0;width:100dvw}body{background-attachment:fixed;background-color:#000;background-image:url(images/board.svg);background-repeat:no-repeat;background-size:100dvw 100dvh;color:#fff;display:grid;font-family:Protest Riot,Trebuchet MS,sans-serif;overflow:hidden;place-items:center;position:relative}.menu{align-items:center;background-color:#2e2e2e;border:3px solid hsla(0,0%,100%,.1);border-radius:1em;display:flex;flex-direction:column;font-size:2.5vmin;gap:1vmin;height:-moz-fit-content;height:fit-content;justify-content:center;padding:2em 2.5em;width:-moz-fit-content;width:fit-content;h1{all:unset;-webkit-background-clip:text;background-clip:text;background-image:linear-gradient(90deg,#666,15%,#fff,85%,#666);color:transparent;font-size:2.5em;font-weight:600;margin-bottom:1.5vmin;text-align:center}.menu-btn,input[type=text]{all:unset;background-color:hsla(0,0%,100%,.05);border:1px solid hsla(0,0%,100%,.1);border-radius:.4em;cursor:pointer;font-size:1.1em;padding-block:.6em;text-align:center;width:9.25em;&:hover{background-color:hsla(0,0%,100%,.1)}&:focus-visible{outline:3px solid #000}}input[type=text]{cursor:text;font-family:Trebuchet MS,sans-serif;&:focus-visible{outline:none}}.field{align-items:center;display:flex;flex-direction:column;gap:1vmin;justify-content:center;width:-moz-fit-content;width:fit-content;label{color:hsla(0,0%,100%,.6);text-align:center}}.img-selector{display:grid;padding:.25em .1em;place-items:center;img{height:6dvh;width:6dvh}}input[type=range]{accent-color:#d9d9d9;cursor:grab;width:11dvw}}.home{padding-bottom:2.75em;.game-title{all:unset;-webkit-background-clip:text;background-clip:text;background-image:linear-gradient(90deg,#666,15%,#fff,85%,#666);color:transparent;font-size:4.25em;font-weight:400;margin-bottom:3.5vmin;text-align:center}}.text-btns{align-items:center;display:flex;flex-direction:column;gap:1vmin}.icon-btns{align-items:center;display:flex;gap:2vmin;justify-content:center;margin-top:1em;.icon-btn{all:unset;background-color:hsla(0,0%,100%,.05);border:1px solid hsla(0,0%,100%,.1);border-radius:.45em;cursor:pointer;display:grid;height:6vmin;place-items:center;width:6vmin;img{filter:invert(1);height:70%;width:70%}&:hover{background-color:hsla(0,0%,100%,.1)}&:focus-visible{outline:3px solid #000}}}.offline{gap:3vmin;padding-inline:3em;.action-btns{margin-top:1em}}.settings{gap:3vmin;padding-inline:3em;.home-btn{margin-top:3vmin}}.menu.host,.menu.join,.menu.online{.error-msg{color:#ff8f8f;font-family:Trebuchet MS,sans-serif;font-size:.75em;margin-bottom:1em;text-align:center;width:12.33em}}.menu.host{.create-room-btn{margin-top:.5em}}.menu.join{.join-rooms-container{align-items:center;display:flex;gap:1.5dvw;margin-bottom:2dvh;.join-rooms-left{.join-room-list{align-items:center;display:flex;flex-direction:column;gap:1dvh;height:22.5dvh;justify-content:start;min-width:12dvw;overflow-y:scroll;padding-right:.6dvw;.no-rooms-msg{background-color:hsla(0,0%,100%,.05);border-radius:1em;color:hsla(0,0%,100%,.3);display:grid;padding:1em;place-items:center;text-align:center;width:11dvw}.join-room-item{&.selected{background-color:hsla(0,0%,100%,.2)}}}}.join-rooms-right{align-items:center;display:flex;flex-direction:column;gap:2dvh;justify-items:center}}}#board{background-color:transparent;cursor:url(images/cursor.svg) 15.5 16.5,crosshair}.menu.pause{color:#fff;&::backdrop{background-color:rgba(0,0,0,.25)}h1{margin-bottom:3.5vmin}}.message{align-items:center;color:hsla(0,0%,100%,.25);display:flex;font-size:4vmin;font-weight:100;gap:1vw;justify-content:center;left:0;margin-inline:auto;pointer-events:none;position:absolute;right:0;top:2.5vh;-webkit-user-select:none;-moz-user-select:none;user-select:none;width:-moz-fit-content;width:fit-content;z-index:2;.message-part{width:15vw}.left{text-align:right}.right{text-align:left}}.scores{align-items:center;bottom:2.5vh;color:#fff;display:flex;font-size:5vmin;font-weight:700;gap:2.5vw;justify-content:center;left:0;margin-inline:auto;pointer-events:none;position:absolute;right:0;-webkit-user-select:none;-moz-user-select:none;user-select:none;width:-moz-fit-content;width:fit-content;z-index:2;.score{width:15vw}#left-score{text-align:right}#right-score{text-align:left}}.strobing-score{animation:strobe 5s}@keyframes strobe{0%{opacity:.25}20%{opacity:1}40%{opacity:.25}60%{opacity:1}80%{opacity:.25}to{opacity:1}}.fps-display{color:#5f0;display:grid;font-size:4vmin;place-items:center;pointer-events:none;position:absolute;right:4vmin;top:4vmin;-webkit-user-select:none;-moz-user-select:none;user-select:none}.rotate-screen{color:#fff;font-size:5vmin;&::backdrop{background-color:#000}img{filter:invert(1);height:40vmin;margin-bottom:7vmin;width:40vmin}}.loading-spinner{background-color:transparent;border:none;&::backdrop{background-color:rgba(0,0,0,.5)}img{filter:invert(1);height:10vmin;width:10vmin}}.toast{background-color:#2e2e2e;border:2px solid hsla(0,0%,100%,.1);border-radius:1em;color:#fff;font-family:Trebuchet MS,sans-serif;font-size:2.5vmin;height:-moz-fit-content;height:fit-content;padding:2.5vmin;pointer-events:none;position:absolute;right:3vmin;top:3vmin;width:-moz-fit-content;width:fit-content;.toast-msg{height:-moz-fit-content;height:fit-content;max-width:33vw;text-align:right;width:-moz-fit-content;width:fit-content}}.hidden{display:none}</style>
+    <script src="index.min.js" defer></script>
+</head>
+<body>
+    <div class="menu home">
+        <h1 class="game-title">Goal</h1>
+        <div class="text-btns">
+            <button class="menu-btn text-btn online-game-btn">Online</button>
+            <button class="menu-btn text-btn offline-game-btn">Offline</button>
+        </div>
+        <div class="icon-btns">
+            <button class="icon-btn mute-toggle-btn">
+                <img src="images/unmuted.svg" alt="Mute Toggle">
+            </button>
+            <button class="icon-btn fullscreen-toggle-btn">
+                <img src="images/fullscreen.svg" alt="Fullscreen Toggle">
+            </button>
+            <button class="icon-btn settings-btn">
+                <img src="images/settings.svg" alt="Settings">
+            </button>
+        </div>
+    </div>
+
+    <div class="menu offline hidden">
+        <h1>Offline</h1>
+        <div class="field">
+            <label for="offline-team-selector">Team</label>
+            <button id="offline-team-selector" class="menu-btn selector" data-values="Left,Right">
+                Left
+            </button>
+        </div>
+        <div class="field">
+            <label for="difficulty-selector">
+                Difficulty
+            </label>
+            <button id="difficulty-selector" class="menu-btn selector" data-values="Easy,Medium,Hard">
+                Medium
+            </button>
+        </div>
+        <div class="field">
+            <label for="players-per-team-selector">Players Per Team</label>
+            <button id="players-per-team-selector" class="menu-btn selector" data-values="One,Two">
+                One
+            </button>
+        </div>
+        <div class="field action-btns">
+            <button class="menu-btn start-offline-game-btn">Start</button>
+            <button class="menu-btn home-btn">Back</button>
+        </div>
+    </div>
+
+    <div class="menu settings hidden">
+        <h1>Settings</h1>
+<!--        <div class="field">-->
+<!--            <label for="theme-selector">Theme</label>-->
+<!--            <button id="theme-selector" class="menu-btn selector" data-values="Light,Dark">-->
+<!--                Dark-->
+<!--            </button>-->
+<!--        </div>-->
+        <div class="field">
+            <label for="master-volume-slider">Master Volume</label>
+            <input type="range" min="0" max="100" value="100" id="master-volume-slider" class="menu-slider" />
+        </div>
+        <div class="field">
+            <label for="music-volume-slider">Music Volume</label>
+            <input type="range" min="0" max="100" value="100" id="music-volume-slider" class="menu-slider" />
+        </div>
+        <div class="field">
+            <label for="sfx-volume-slider">SFX Volume</label>
+            <input type="range" min="0" max="100" value="100" id="sfx-volume-slider" class="menu-slider" />
+        </div>
+        <button class="menu-btn home-btn">Back</button>
+    </div>
+
+    <div class="menu online hidden">
+        <h1>Online</h1>
+        <div class="field">
+            <label for="user-name">User Name</label>
+            <input type="text" name="user-name" id="user-name" placeholder="Type here">
+            <div class="error-msg"></div>
+        </div>
+        <button class="menu-btn host-menu-btn">Host</button>
+        <button class="menu-btn join-menu-btn">Join</button>
+        <button class="menu-btn home-btn">Back</button>
+    </div>
+
+    <div class="menu host hidden">
+        <h1>Host</h1>
+        <div class="field">
+            <label for="create-room-name">Room Name</label>
+            <input type="text" name="room-name" id="create-room-name" placeholder="Type here">
+            <div class="error-msg"></div>
+        </div>
+        <div class="field">
+            <label for="create-room-team-selector">Team</label>
+            <button id="create-room-team-selector" class="menu-btn selector" data-values="Left,Right">
+                Left
+            </button>
+        </div>
+        <div class="field">
+            <label for="create-room-striker-selector">Striker</label>
+            <button id="create-room-striker-selector" class="menu-btn img-selector" data-values="0,1,2,3" data-value="0">
+                <img src="images/striker-0.svg" alt="Striker">
+            </button>
+        </div>
+        <button class="menu-btn create-room-btn">Create Room</button>
+        <button class="menu-btn home-btn">Home</button>
+    </div>
+
+    <div class="menu join hidden">
+        <h1>Join</h1>
+        <div class="join-rooms-container">
+            <div class="join-rooms-left">
+                <div class="field">
+                    <label>Rooms</label>
+                    <div class="join-room-list"></div>
+                </div>
+            </div>
+            <div class="join-rooms-right">
+                <div class="field">
+                    <label for="join-room-team-selector">Team</label>
+                    <button id="join-room-team-selector" class="menu-btn selector" data-values="Left,Right">
+                        Left
+                    </button>
+                </div>
+                <div class="field">
+                    <label for="join-room-striker-selector">Striker</label>
+                    <button id="join-room-striker-selector" class="menu-btn img-selector" data-values="0,1,2,3" data-value="0">
+                        <img src="images/striker-0.svg" alt="Striker">
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="error-msg">No rooms available</div>
+        <button class="menu-btn refresh-btn">Refresh</button>
+        <button class="menu-btn join-room-btn">Join</button>
+        <button class="menu-btn home-btn">Home</button>
+    </div>
+
+    <canvas id="board" class="hidden"></canvas>
+
+    <dialog class="menu pause hidden">
+        <h1>Paused</h1>
+        <button class="menu-btn resume-btn">Resume</button>
+        <button class="menu-btn exit-btn">Exit</button>
+        <div class="icon-btns">
+            <button class="icon-btn mute-toggle-btn">
+                <img src="images/unmuted.svg" alt="Mute Toggle">
+            </button>
+            <button class="icon-btn fullscreen-toggle-btn">
+                <img src="images/fullscreen.svg" alt="Fullscreen Toggle">
+            </button>
+        </div>
+    </dialog>
+
+    <div class="message hidden">
+        <div class="left message-part">Double click</div>
+        <div class="right message-part">to pause game</div>
+    </div>
+
+    <div class="scores hidden">
+        <div id="left-score" class="score">0</div>
+        <div id="right-score" class="score">0</div>
+    </div>
+
+    <div class="fps-display hidden"></div>
+
+    <dialog class="menu loading-spinner hidden">
+        <img src="images/loading.svg" alt="Loading Spinner">
+    </dialog>
+
+    <div class="toast hidden">
+        <div class="toast-msg"></div>
+    </div>
+
+    <dialog class="menu rotate-screen hidden">
+        <img src="images/rotate-screen.svg" alt="Rotate Screen">
+        <p>Please rotate screen</p>
+    </dialog>
+</body>
+</html>

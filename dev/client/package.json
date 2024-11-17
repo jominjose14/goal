@@ -1,0 +1,20 @@
+{
+  "name": "goal-client",
+  "version": "1.0.0",
+  "description": "node project for building goal's web client using vite",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "node build.js"
+  },
+  "author": "jominjose14",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "clean-css": "^5.3.3",
+    "cssnano": "^7.0.6",
+    "esbuild": "^0.24.0",
+    "glob": "^11.0.0",
+    "postcss": "^8.4.49"
+  }
+}
