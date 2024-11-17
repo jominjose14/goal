@@ -1,6 +1,7 @@
 .idea
-public/audio/old
-public/audio/original
-public/images/old
+node_modules
 log
 *.log
+audio/old
+audio/original
+images/old
