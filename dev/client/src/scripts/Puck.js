@@ -6,46 +6,35 @@ import {
     X_PUCK_MAX_VEL_DIVIDEND,
     Y_PUCK_MAX_VEL_DIVIDEND,
     PUCK_MIN_SPEED,
-    PUCK_RADIUS_FRACTION, STUCK_PUCK_MAX_DURATION, PUCK_PLAYER_COLLISION_COOLDOWN,
+    PUCK_RADIUS_FRACTION, STUCK_PUCK_MAX_DURATION, PUCK_PLAYER_COLLISION_COOLDOWN, PUCK_COLOR, PUCK_FRICTION,
 } from "./global.js";
 import {handleGoal, resetStuckPuckMetrics} from "./game.js";
 import {clamp} from "./util.js";
 import {playSound} from "./audio.js";
 
 export default class Puck {
+    #radius;
+    #color;
     #xPos;
     #yPos;
     #xVel;
     #yVel;
-    #radius;
-    #color;
-    #friction = 0.999;
+    #friction;
 
-    constructor(xVel, yVel, radius, color) {
+    constructor(xVel, yVel) {
+        this.reset();
+        this.#color = PUCK_COLOR;
         this.xVel = xVel;
         this.yVel = yVel;
-        this.#radius = radius;
-        this.#color = color;
-    }
-
-    get xPos() {
-        return this.#xPos;
-    }
-
-    get yPos() {
-        return this.#yPos;
-    }
-
-    get xVel() {
-        return this.#xVel;
-    }
-
-    get yVel() {
-        return this.#yVel;
+        this.#friction = PUCK_FRICTION;
     }
 
     get radius() {
         return this.#radius;
+    }
+
+    get xPos() {
+        return this.#xPos;
     }
 
     set xPos(xPos) {
@@ -53,15 +42,27 @@ export default class Puck {
         this.#xPos = clamp(-$canvas.width - 2*this.#radius, xPos, $canvas.width + 2*this.#radius);
     }
 
+    get yPos() {
+        return this.#yPos;
+    }
+
     set yPos(yPos) {
         if(isNaN(yPos)) return;
         this.#yPos = clamp(-$canvas.height - 2*this.#radius, yPos, $canvas.height + 2*this.#radius);
+    }
+
+    get xVel() {
+        return this.#xVel;
     }
 
     set xVel(xVel) {
         if(isNaN(xVel)) return;
         if(Math.abs(xVel) < PUCK_MIN_SPEED) xVel = Math.sign(xVel) * PUCK_MIN_SPEED;
         this.#xVel = clamp(-$canvas.width/X_PUCK_MAX_VEL_DIVIDEND, xVel, $canvas.width/X_PUCK_MAX_VEL_DIVIDEND);
+    }
+
+    get yVel() {
+        return this.#yVel;
     }
 
     set yVel(yVel) {

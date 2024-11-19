@@ -4,7 +4,7 @@ import {
     Y_BOARD_RINK_FRACTION, FPS,
     MAIN_PLAYER_VEL_MULTIPLIER, MAX_USERS_PER_ROOM,
     PLAYER_RADIUS_FRACTION,
-    state, strikers
+    state, strikers, IS_DEV_MODE, MAX_USERNAME_LENGTH, validTeams, validPlayerTypes, validDifficulties
 } from "./global.js";
 
 import {clamp} from "./util.js";
@@ -14,43 +14,34 @@ export default class Player {
     #radius;
     #strikerIdx;
     #team;
-    #type; // main OR ai OR remote
+    #type;
     #intelligence;
     #xPos;
     #yPos;
-    #timestampToMeasureVel = null;
     #xVel = 0;
     #yVel = 0;
+    #timestampToMeasureVel = null;
     prevCollisionTimestamp = 0;
 
     constructor(name, strikerIdx, team, type) {
         this.#name = name;
+        this.resetRadius();
         this.#strikerIdx = strikerIdx;
         this.#team = team;
         this.#type = type;
         this.#intelligence = state.difficulty;
-
-        this.resetRadius();
-    }
-
-    get xPos() {
-        return this.#xPos;
-    }
-
-    get yPos() {
-        return this.#yPos;
-    }
-
-    get xVel() {
-        return this.#xVel;
-    }
-
-    get yVel() {
-        return this.#yVel;
     }
 
     get name() {
         return this.#name;
+    }
+
+    set name(name) {
+        if(MAX_USERNAME_LENGTH < name.length) {
+            if(IS_DEV_MODE) console.error(`Cannot set player ${this.name}'s name to invalid value ${name}. Min length is 1 and max length is ${MAX_USERNAME_LENGTH}`);
+            return;
+        }
+        this.#name = name;
     }
 
     get radius() {
@@ -61,30 +52,55 @@ export default class Player {
         return this.#strikerIdx;
     }
 
+    set strikerIdx(strikerIdx) {
+        if(strikerIdx < 0 || MAX_USERS_PER_ROOM <= strikerIdx) {
+            if(IS_DEV_MODE) console.error(`Cannot set player ${this.name}'s strikerId to invalid value ${strikerIdx}. Min value is 0 and max value is ${MAX_USERS_PER_ROOM-1}`);
+            return;
+        }
+        this.#strikerIdx = strikerIdx;
+    }
+
     get team() {
         return this.#team;
+    }
+
+    set team(team) {
+        team = team.toLowerCase();
+        if(!validTeams.includes(team)) {
+            if(IS_DEV_MODE) console.error(`Cannot set player ${this.name}'s team to invalid value ${team}`);
+            return;
+        }
+        this.#team = team;
+    }
+
+    get type() {
+        return this.#type;
+    }
+
+    set type(type) {
+        type = type.toLowerCase();
+        if(!validPlayerTypes.includes(type)) {
+            if(IS_DEV_MODE) console.error(`Cannot set player ${this.name}'s type to invalid value ${type}`);
+            return;
+        }
+        this.#type = type;
     }
 
     get intelligence() {
         return this.#intelligence;
     }
 
-    set name(name) {
-        this.#name = name;
-    }
-
-    set strikerIdx(strikerIdx) {
-        if(strikerIdx < 0 || MAX_USERS_PER_ROOM <= strikerIdx) return;
-        this.#strikerIdx = strikerIdx;
-    }
-
-    set team(team) {
-        this.#team = team;
-    }
-
     set intelligence(intelligence) {
-        if(intelligence !== "Easy" && intelligence !== "Medium" && intelligence !== "Hard") return;
+        intelligence = intelligence.toLowerCase();
+        if(!validDifficulties.includes(intelligence)) {
+            if(IS_DEV_MODE) console.error(`Cannot set player ${this.name}'s intelligence to invalid value ${intelligence}`);
+            return;
+        }
         this.#intelligence = intelligence;
+    }
+
+    get xPos() {
+        return this.#xPos;
     }
 
     set xPos(xPos) {
@@ -101,6 +117,10 @@ export default class Player {
         }
     }
 
+    get yPos() {
+        return this.#yPos;
+    }
+
     set yPos(yPos) {
         if(isNaN(yPos)) return;
 
@@ -109,9 +129,17 @@ export default class Player {
         this.#yPos = clamp(yBoardBoundStart, yPos, yBoardBoundEnd);
     }
 
+    get xVel() {
+        return this.#xVel;
+    }
+
     set xVel(xVel) {
         if(isNaN(xVel)) return;
         this.#xVel = clamp(-$canvas.width, xVel, $canvas.width);
+    }
+
+    get yVel() {
+        return this.#yVel;
     }
 
     set yVel(yVel) {
@@ -312,19 +340,19 @@ export default class Player {
     }
 
     update() {
-        if(this.#type === "ai") {
+        if(this.type === "ai") {
             this.onAiCollideWithBounds();
 
             switch(this.#intelligence) {
-                case "Easy": {
+                case "easy": {
                     this.easyAiUpdate();
                 }
                 break;
-                case "Medium": {
+                case "medium": {
                     this.mediumAiUpdate();
                 }
                 break;
-                case "Hard": {
+                case "hard": {
                     this.hardAiUpdate();
                 }
             }

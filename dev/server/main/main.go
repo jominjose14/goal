@@ -14,8 +14,10 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const webSocketReadLimit = 1024 // max allowed message size = 1024 bytes = 1 KB
-const webSocketTimeout = 60     // measured in seconds
+const (
+	webSocketReadLimit = 1024 // max allowed message size = 1024 bytes = 1 KB
+	webSocketTimeout   = 60   // measured in seconds
+)
 
 func rootHandler(writer http.ResponseWriter, req *http.Request) {
 	http.Redirect(writer, req, "/public/index.html", http.StatusSeeOther)

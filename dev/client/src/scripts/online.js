@@ -8,11 +8,11 @@ import {
     $rightScore,
     $scores,
     domain,
-    IS_DEBUG_MODE,
+    IS_DEV_MODE,
     MAX_ROOM_NAME_LENGTH,
     MAX_USERNAME_LENGTH,
     MAX_USERS_PER_ROOM,
-    state, WEBSOCKET_CLIENT_TIMEOUT
+    state, WEBSOCKET_CLIENT_TIMEOUT, webSocketErrors
 } from "./global.js";
 import {
     capitalizeFirstLetter,
@@ -54,25 +54,25 @@ export function connectUsingUserName() {
         state.webSocketConn = new WebSocket(`ws://${domain}/user`);
 
         state.webSocketConn.onopen = () => {
-            if (IS_DEBUG_MODE) console.log("Web socket connection established");
+            if (IS_DEV_MODE) console.log("Web socket connection established");
             state.webSocketConn.send(JSON.stringify({
                 channel: "handshake",
                 userName: $userNameTxtInput.value.trim(),
             }));
-            if (IS_DEBUG_MODE) console.log("Sent web socket message on 'handshake' channel");
+            if (IS_DEV_MODE) console.log("Sent web socket message on 'handshake' channel");
         }
 
         state.webSocketConn.onmessage = (event) => {
-            if (IS_DEBUG_MODE) console.log("Received web socket message during handshake");
+            if (IS_DEV_MODE) console.log("Received web socket message during handshake");
 
             const payload = JSON.parse(event.data);
             if (payload.channel !== "handshake") {
-                if (IS_DEBUG_MODE) console.error("Received web socket message from invalid channel during handshake");
-                state.webSocketConn.close();
+                if (IS_DEV_MODE) console.error("Received web socket message from invalid channel during handshake");
+                state.webSocketConn.close(webSocketErrors.wrongChannel.code, webSocketErrors.wrongChannel.reason);
                 return;
             }
 
-            if (IS_DEBUG_MODE) console.log("Received web socket message on 'handshake' channel");
+            if (IS_DEV_MODE) console.log("Received web socket message on 'handshake' channel");
 
             if (payload.isSuccess) {
                 state.userName = $userNameTxtInput.value.trim();
@@ -81,27 +81,27 @@ export function connectUsingUserName() {
                 return;
             } else {
                 $errorMsg.textContent = capitalizeFirstLetter(payload.message);
-                state.webSocketConn.close();
+                state.webSocketConn.close(webSocketErrors.rejectedUsername.code, webSocketErrors.rejectedUsername.reason);
                 return;
             }
         }
 
         if (state.webSocketConn !== null) state.webSocketConn.onerror = () => {
-            if (IS_DEBUG_MODE) console.error("Error during web socket communication");
+            if (IS_DEV_MODE) console.error("Error during web socket communication");
             $errorMsg.textContent = "Error while communicating with server";
-            state.webSocketConn.close();
+            state.webSocketConn.close(1002);
         }
 
         if (state.webSocketConn !== null) state.webSocketConn.onclose = () => {
             if(state.userName === null) {
                 // web socket connection closed during handshake
-                if (IS_DEBUG_MODE) console.log("Web socket connection closed");
+                if (IS_DEV_MODE) console.log("Web socket connection closed");
                 if ($errorMsg.textContent === "") $errorMsg.textContent = "Can't connect to server";
                 resetPostDisconnect();
                 resolve();
             } else {
                 // web socket connection closed after handshake and before entering an online game (user clicked home button from a menu)
-                if (IS_DEBUG_MODE) console.log("Web socket connection closed due to user clicking home button");
+                if (IS_DEV_MODE) console.log("Web socket connection closed due to user clicking home button");
             }
         }
     });
@@ -131,7 +131,7 @@ export function startOnlineGame(team, strikerIdx) {
 
         switch (payload.channel) {
             case "memberLeft": {
-                if (IS_DEBUG_MODE) console.log("Received web socket message on 'memberLeft' channel");
+                if (IS_DEV_MODE) console.log("Received web socket message on 'memberLeft' channel");
 
                 let playerThatLeft = null;
                 for (const player of state.nonMainPlayers) {
@@ -154,7 +154,7 @@ export function startOnlineGame(team, strikerIdx) {
             break;
 
             case "state": {
-                if (IS_DEBUG_MODE) console.log(`Received web socket message on 'state' channel. Remote state originated from remote user ${payload.userName}`);
+                if (IS_DEV_MODE) console.log(`Received web socket message on 'state' channel. Remote state originated from remote user ${payload.userName}`);
 
                 let found = false;
                 for (const player of state.nonMainPlayers) {
@@ -192,18 +192,18 @@ export function startOnlineGame(team, strikerIdx) {
             break;
 
             default: {
-                if (IS_DEBUG_MODE) console.error(`Received web socket message from invalid channel named '${payload.channel}'`);
+                if (IS_DEV_MODE) console.error(`Received web socket message from invalid channel named '${payload.channel}'`);
             }
         }
     };
 
     state.webSocketConn.onerror = (error) => {
-        if (IS_DEBUG_MODE) console.error("Error during web socket communication. Reason: ", error);
-        state.webSocketConn.close();
+        if (IS_DEV_MODE) console.error("Error during web socket communication. Reason: ", error);
+        state.webSocketConn.close(1002);
     };
 
     state.webSocketConn.onclose = () => {
-        if (IS_DEBUG_MODE) console.log("Web socket connection closed");
+        if (IS_DEV_MODE) console.log("Web socket connection closed");
         exitGame();
     };
 
@@ -212,7 +212,7 @@ export function startOnlineGame(team, strikerIdx) {
 
 export async function createRoom(roomName, team, strikerIdx) {
     const $errorMsg = $createRoomMenu.querySelector(".error-msg");
-    const protocol = IS_DEBUG_MODE ? "http" : "https";
+    const protocol = IS_DEV_MODE ? "http" : "https";
     let response = null;
 
     if (roomName === "") {
@@ -255,7 +255,7 @@ export async function createRoom(roomName, team, strikerIdx) {
 
 export async function getRoomList() {
     const $errorMsg = $joinRoomMenu.querySelector(".error-msg");
-    const protocol = IS_DEBUG_MODE ? "http" : "https";
+    const protocol = IS_DEV_MODE ? "http" : "https";
     let response = null;
 
     try {
@@ -312,7 +312,7 @@ export async function getRoomList() {
 export async function joinRoom(roomName, team, strikerIdx) {
     const $errorMsg = $joinRoomMenu.querySelector(".error-msg");
     $errorMsg.textContent = "";
-    const protocol = IS_DEBUG_MODE ? "http" : "https";
+    const protocol = IS_DEV_MODE ? "http" : "https";
     let response = null;
 
     try {
@@ -346,7 +346,12 @@ export async function joinRoom(roomName, team, strikerIdx) {
 
 export function sendRemoteState() {
     if (state.webSocketConn === null) {
-        if (IS_DEBUG_MODE) console.error("Cannot send remote state to server as web socket connection does not exist");
+        if (IS_DEV_MODE) console.error("Cannot send remote state to server as web socket connection does not exist");
+        exitGame();
+        return;
+    } else if(state.webSocketConn.readyState !== WebSocket.OPEN) {
+        if (IS_DEV_MODE) console.error("Cannot send remote state to server as web socket connection is not in the open state");
+        exitGame();
         return;
     }
 
@@ -388,7 +393,7 @@ export function checkConnectionHeartbeat() {
 
     const timeElapsedSinceLastMsg = window.performance.now() - state.connTimeoutMetrics.prevMsgTimestamp;
     if(WEBSOCKET_CLIENT_TIMEOUT < timeElapsedSinceLastMsg) {
-        state.webSocketConn.close();
+        state.webSocketConn.close(webSocketErrors.serverInactivity.code, webSocketErrors.serverInactivity.reason);
     }
 }
 

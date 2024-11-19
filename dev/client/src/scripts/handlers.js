@@ -12,6 +12,7 @@ import {
     strikerImgUrls
 } from "./global.js";
 import {
+    capitalizeFirstLetter,
     clamp,
     closeModal,
     hide,
@@ -100,11 +101,11 @@ export function onClickHomeBtn($element) {
 
 export function onSelectorClick($element) {
     const values = $element.dataset.values.split(",");
-    const currValue = $element.textContent.trim();
+    const currValue = $element.textContent.trim().toLowerCase();
 
     for (let i = 0; i < values.length; i++) {
         if (values[i] === currValue) {
-            $element.textContent = values[(i + 1) % values.length];
+            $element.textContent = capitalizeFirstLetter(values[(i + 1) % values.length]);
             break;
         }
     }
@@ -136,19 +137,19 @@ export function onChangeOrientation(event) {
 }
 
 export function onChangeOfflineTeam() {
-    state.offlineTeam = document.getElementById("offline-team-selector").textContent;
+    state.offlineTeam = document.getElementById("offline-team-selector").textContent.toLowerCase();
 }
 
 export function onChangeDifficulty() {
-    state.difficulty = document.getElementById("difficulty-selector").textContent;
+    state.difficulty = document.getElementById("difficulty-selector").textContent.toLowerCase();
 }
 
 export function onChangePlayersPerTeam() {
-    state.playersPerTeam = document.getElementById("players-per-team-selector").textContent;
+    state.playersPerTeam = document.getElementById("players-per-team-selector").textContent.toLowerCase();
 }
 
 export function onChangeTheme() {
-    state.theme = document.getElementById("theme-selector").textContent;
+    state.theme = document.getElementById("theme-selector").textContent.toLowerCase();
 }
 
 export function onInputRange($rangeInput) {

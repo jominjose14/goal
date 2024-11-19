@@ -1,5 +1,5 @@
 // == Constants ==
-export const IS_DEBUG_MODE = true;
+export const IS_DEV_MODE = true;
 
 // online
 export const domain = (new URL(window.location.href)).host;
@@ -12,6 +12,11 @@ export const WEBSOCKET_SERVER_TIMEOUT = 60_000; // measured in milliseconds
 export const WEBSOCKET_CLIENT_TIMEOUT = 60_000; // measured in milliseconds
 export const TRUNCATE_FLOAT_PRECISION = 3;
 export const TRUNCATE_FLOAT_FACTOR = Math.pow(10, TRUNCATE_FLOAT_PRECISION);
+export const webSocketErrors = {
+    serverInactivity: { code: 3001, reason: "Server inactivity timeout" },
+    wrongChannel: { code: 3002, reason: "Wrong channel" },
+    rejectedUsername: { code: 3003, reason: "Username rejected by server" },
+};
 
 // DOM elements
 export const $homeMenu = document.querySelector(".menu.home");
@@ -41,6 +46,7 @@ export const X_BOARD_RINK_FRACTION = 0.008; // for 16:9 aspect ratio
 export const Y_BOARD_RINK_FRACTION = 0.014; // for 16:9 aspect ratio
 export const PUCK_RADIUS_FRACTION = 0.015; // TODO: make this ratio editable in settings
 export const PLAYER_RADIUS_FRACTION = 0.0225 // TODO: make this ratio editable in settings
+export const PUCK_COLOR = "hsla(0, 0%, 100%, 1)";
 
 // config
 export const FPS = 60;
@@ -48,6 +54,7 @@ export const MILLISECONDS_BTW_FRAMES = 1000 / FPS;
 export const X_PUCK_MAX_VEL_DIVIDEND = 3 * (FPS/60) * 16; // TODO: handle for non 16:9 aspect ratios
 export const Y_PUCK_MAX_VEL_DIVIDEND = 3 * (FPS/60) * 9; // TODO: handle for non 16:9 aspect ratios
 export const PUCK_MIN_SPEED = 1; // measured in px/frame
+export const PUCK_FRICTION = 0.999; // fraction of speed retained after deceleration caused by friction
 export const PUCK_COLLISION_ESCAPE_MULTIPLIER = 2.5;
 export const MAIN_PLAYER_VEL_MULTIPLIER = 2.5;
 export const AI_PLAYER_ACCEL = 2.5;
@@ -59,10 +66,14 @@ export const INITIAL_MUSIC_GAIN = 0.9;
 export const INITIAL_FX_GAIN = 0.8;
 
 // reference values
-export const allTeams = ["Left", "Right"];
-export const allStrikerIndices = [];
+export const validThemes = ["dark", "light"];
+export const validTeams = ["left", "right"];
+export const validDifficulties = ["easy", "medium", "hard"];
+export const validPlayersPerTeam = ["one", "two"];
+export const validPlayerTypes = ["main", "ai", "remote"];
+export const validStrikerIndices = [];
 for(let i=0; i<MAX_USERS_PER_ROOM; i++) {
-    allStrikerIndices.push(i);
+    validStrikerIndices.push(i);
 }
 export const strikerImgUrls = [
     "images/striker-0.svg",
@@ -147,10 +158,11 @@ export const state = {
     allPlayers: [],
     nonMainPlayers: [],
     puck: null,
-    offlineTeam: "Left",
-    difficulty: "Medium",
-    playersPerTeam: "Two",
-    // theme: "Dark",
+    strikerIdx: "0",
+    offlineTeam: "left", // applies to offline mode only
+    difficulty: "medium", // applies to offline mode only
+    playersPerTeam: "two", // applies to offline mode only
+    // theme: "dark",
     prevMasterGainValue: INITIAL_MASTER_GAIN,
     toastTimeoutId: -1,
 };

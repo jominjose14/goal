@@ -9,7 +9,7 @@ import {
     $rightScore,
     $scores,
     FPS,
-    IS_DEBUG_MODE,
+    IS_DEV_MODE,
     MILLISECONDS_BTW_FRAMES,
     state,
     X_BOARD_RINK_FRACTION,
@@ -55,7 +55,7 @@ function refreshCanvas() {
     state.puck.update();
     for (const player of state.allPlayers) player.update();
 
-    if(IS_DEBUG_MODE) {
+    if(IS_DEV_MODE) {
         state.fpsMetrics.canvasFpsCounter++;
         debugOpsPerRefresh();
     }
@@ -126,12 +126,12 @@ export function startOfflineGame() {
     const mainPlayerTeam = state.offlineTeam.toLowerCase();
     const opponentTeam = mainPlayerTeam === "left" ? "right" : "left";
 
-    if(state.playersPerTeam === "One") {
+    if(state.playersPerTeam === "one") {
         const aiOpponent = new Player("Tom", 1, opponentTeam, "ai");
         aiOpponent.reset();
         aiOpponent.addToBoard();
         aiOpponent.intelligence = state.difficulty;
-    } else if(state.playersPerTeam === "Two") {
+    } else if(state.playersPerTeam === "two") {
         const aiTeamMate = new Player("Tom", 1, mainPlayerTeam, "ai");
         aiTeamMate.reset();
         aiTeamMate.addToBoard();
@@ -144,18 +144,18 @@ export function startOfflineGame() {
         aiOpponentTwo.reset();
         aiOpponentTwo.addToBoard();
 
-        if(state.difficulty === "Easy") {
-            aiTeamMate.intelligence = "Medium";
-            aiOpponentOne.intelligence = "Easy";
-            aiOpponentTwo.intelligence = "Medium";
-        } else if(state.difficulty === "Medium") {
-            aiTeamMate.intelligence = "Easy";
-            aiOpponentOne.intelligence = "Easy";
-            aiOpponentTwo.intelligence = "Medium";
-        } else if(state.difficulty === "Hard") {
-            aiTeamMate.intelligence = "Easy";
-            aiOpponentOne.intelligence = "Medium";
-            aiOpponentTwo.intelligence = "Hard";
+        if(state.difficulty === "easy") {
+            aiTeamMate.intelligence = "medium";
+            aiOpponentOne.intelligence = "easy";
+            aiOpponentTwo.intelligence = "medium";
+        } else if(state.difficulty === "medium") {
+            aiTeamMate.intelligence = "easy";
+            aiOpponentOne.intelligence = "easy";
+            aiOpponentTwo.intelligence = "medium";
+        } else if(state.difficulty === "hard") {
+            aiTeamMate.intelligence = "easy";
+            aiOpponentOne.intelligence = "medium";
+            aiOpponentTwo.intelligence = "hard";
         }
     }
 

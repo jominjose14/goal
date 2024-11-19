@@ -7,10 +7,12 @@ import (
 	"sync"
 )
 
-const maxRoomNameLength = 10
-const maxRoomCount = 16
-const maxUsersPerRoom = 4
-const maxUsersPerTeam = 2
+const (
+	maxRoomNameLength = 10
+	maxRoomCount      = 16
+	maxUsersPerRoom   = 4
+	maxUsersPerTeam   = 2
+)
 
 type room struct {
 	mu             sync.Mutex

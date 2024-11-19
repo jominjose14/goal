@@ -3,8 +3,8 @@ import {
     $leftScore,
     $loadingSpinner,
     $toast,
-    allStrikerIndices,
-    allTeams,
+    validStrikerIndices,
+    validTeams,
     state,
     TOAST_DURATION, TRUNCATE_FLOAT_FACTOR
 } from "./global.js";
@@ -140,12 +140,12 @@ export function resetImgSelector($selector) {
 }
 
 export function resetTeamSelectorValues($teamSelector) {
-    $teamSelector.dataset.values = allTeams.join(",");
+    $teamSelector.dataset.values = validTeams.join(",");
     resetTextSelector($teamSelector);
 }
 
 export function resetStrikerSelectorValues($strikerSelector) {
-    $strikerSelector.dataset.values = allStrikerIndices.join(",");
+    $strikerSelector.dataset.values = validStrikerIndices.join(",");
     resetImgSelector($strikerSelector);
 }
 

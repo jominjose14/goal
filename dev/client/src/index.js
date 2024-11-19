@@ -8,13 +8,13 @@ import {
     $offlineMenu,
     $onlineMenu,
     $pauseMenu, INITIAL_FX_GAIN, INITIAL_MASTER_GAIN, INITIAL_MUSIC_GAIN,
-    IS_DEBUG_MODE,
-    state,
+    IS_DEV_MODE,
+    state, validThemes, validDifficulties, validStrikerIndices, validTeams, validPlayersPerTeam,
 } from "./scripts/global.js";
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {exitGame, resizeBoard, startOfflineGame} from "./scripts/game.js";
-import {isHandheldDevice, startLoading, stopLoading} from "./scripts/util.js";
+import {capitalizeFirstLetter, isHandheldDevice, startLoading, stopLoading} from "./scripts/util.js";
 import {getRoomList} from "./scripts/online.js";
 import {
     onChangeDifficulty,
@@ -54,7 +54,7 @@ function main() {
     state.mainPlayer.reset();
     state.mainPlayer.addToBoard();
 
-    state.puck = new Puck(0, 0, 20, "hsla(0, 0%, 100%, 1)");
+    state.puck = new Puck(0, 0);
 
     if(isHandheldDevice()) {
         $canvas.addEventListener("touchmove", event => onTouchMove(event));
@@ -65,7 +65,7 @@ function main() {
     window.addEventListener("resize", onResize);
 
     resizeBoard();
-    if(IS_DEBUG_MODE) debugOps();
+    if(IS_DEV_MODE) debugOps();
 }
 
 function debugOps() {
@@ -78,9 +78,30 @@ function debugOps() {
 }
 
 function initializeParameters() {
-    document.getElementById("offline-team-selector").textContent = state.offlineTeam;
-    document.getElementById("difficulty-selector").textContent = state.difficulty;
-    document.getElementById("players-per-team-selector").textContent = state.playersPerTeam;
+    // for(const $themeSelector of document.querySelectorAll(".theme-selector")) {
+    //     $themeSelector.textContent = capitalizeFirstLetter(state.theme);
+    //     $themeSelector.dataset.values = validThemes.join(",");
+    // }
+
+    for(const $teamSelector of document.querySelectorAll(".team-selector")) {
+        $teamSelector.textContent = capitalizeFirstLetter(state.offlineTeam);
+        $teamSelector.dataset.values = validTeams.join(",");
+    }
+
+    for(const $difficultySelector of document.querySelectorAll(".difficulty-selector")) {
+        $difficultySelector.textContent = capitalizeFirstLetter(state.difficulty);
+        $difficultySelector.dataset.values = validDifficulties.join(",");
+    }
+
+    for(const $strikerSelector of document.querySelectorAll(".striker-selector")) {
+        $strikerSelector.dataset.value = state.strikerIdx;
+        $strikerSelector.dataset.values = validStrikerIndices.join(",");
+    }
+
+    for(const $playersPerTeamSelector of document.querySelectorAll(".players-per-team-selector")) {
+        $playersPerTeamSelector.textContent = capitalizeFirstLetter(state.playersPerTeam);
+        $playersPerTeamSelector.dataset.values = validPlayersPerTeam.join(",");
+    }
 
     $masterVolumeSlider.value = INITIAL_MASTER_GAIN * 100;
     $musicVolumeSlider.value = INITIAL_MUSIC_GAIN * 100;
@@ -123,6 +144,7 @@ function attachEventListeners() {
     for(const $selector of document.querySelectorAll(".menu .selector")) {
         $selector.addEventListener("click", (event) => {
             onSelectorClick(event.target);
+
             if(event.target.id === "offline-team-selector") {
                 onChangeOfflineTeam();
             } else if(event.target.id === "difficulty-selector") {
@@ -132,6 +154,8 @@ function attachEventListeners() {
             } else if(event.target.id === "theme-selector") {
                 onChangeTheme();
             }
+
+            event.target.textContent = capitalizeFirstLetter(event.target.textContent);
         });
     }
 
