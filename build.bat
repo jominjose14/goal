@@ -1,7 +1,11 @@
 echo [INFO] Building client
-cd dev\\client
-npm run build
+cd dev\client
+call npm install
+call npm run build
 
 echo [INFO] Building server
-cd ..\\server
-.\\build-server.bat
+cd ..\server
+.\build-server.bat
+
+echo.
+echo [INFO] Build process complete

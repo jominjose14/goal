@@ -1,6 +1,6 @@
 # Goal
 
-An air-hockey game
+An air-hockey game web app
 
 ### Features:
 - Offline mode against AIs (3 difficulties: Easy, Medium, Hard)
@@ -12,24 +12,20 @@ An air-hockey game
 - Offline mode only
     - Host the **build/public** directory using any static file server like VSCode's Live Server extension, Node.js's nodemon module, Apache File Server, etc.
 - Online and offline modes
-    - Windows
-        - Navigate to this git repository's root directory in Command Prompt/PowerShell
-        - `cd build`
-        - `.\server.exe`
-    - Linux/macOS
-        - Not supported yet
+    - Navigate to this git repository's root directory inside a terminal (Command Prompt on Windows and Terminal on Linux/macOS)
+    - `cd build`
+    - On Windows
+        - `.\goal-win-server.exe`
+    - On Linux
+        - `./goal-linux-server`
+    - On macOS
+        - `./goal-macos-server`
 
 ### How to build:
-- Windows
-    - Build frontend
-        - Install Node.js (version 20.14.0 or higher)
-        - Navigate to this git repository's root directory in Command Prompt/PowerShell
-        - `npm install`
-        - `npm run build`
-    - Build backend
-        - Install Go (version 1.23.1 or higher)
-        - Navigate to this git repository's root directory in Command Prompt/PowerShell
-        - `cd src\server`
-        - `go build -o ..\..\build\server.exe .\main`
-- Linux/macOS
-    - Not supported yet
+- Install Node.js (version 20.14.0 or higher)
+- Install Go (version 1.23.1 or higher)
+- Navigate to this git repository's root directory inside a terminal (Command Prompt on Windows and Terminal on Linux/macOS)
+- On Windows
+    - `.\build.bat`
+- On Linux/macOS
+    - `./build.sh`
