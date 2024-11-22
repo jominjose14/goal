@@ -22,15 +22,14 @@ import {
     validTeams,
     validPlayersPerTeam,
     $fpsDisplay,
-    IS_HANDHELD_DEVICE,
+    IS_HANDHELD_DEVICE, selectablePlayerTypes,
 } from "./scripts/global.js";
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {resizeBoard, startOfflineGame} from "./scripts/game.js";
-import {capitalizeFirstLetter, isHandheldDevice, show, startLoading, stopLoading} from "./scripts/util.js";
+import {capitalizeFirstLetter, show, startLoading, stopLoading} from "./scripts/util.js";
 import {getRoomList} from "./scripts/online.js";
 import {
-    onArrowKeyDown, onArrowKeyUp,
     onChangeDifficulty,
     onChangeOfflineTeam,
     onChangeOrientation,
@@ -119,6 +118,11 @@ function initializeParameters() {
         $playersPerTeamSelector.dataset.values = validPlayersPerTeam.join(",");
     }
 
+    for(const $playerTypeSelector of document.querySelectorAll(".player-type-selector")) {
+        $playerTypeSelector.textContent = capitalizeFirstLetter(state.playerType);
+        $playerTypeSelector.dataset.values = selectablePlayerTypes.join(",");
+    }
+
     $masterVolumeSlider.value = INITIAL_MASTER_GAIN * 100;
     $musicVolumeSlider.value = INITIAL_MUSIC_GAIN * 100;
     $sfxVolumeSlider.value = INITIAL_FX_GAIN * 100;
@@ -163,8 +167,8 @@ function attachEventListeners() {
 
             if(event.target.id === "offline-team-selector") {
                 onChangeOfflineTeam();
-            } else if(event.target.id === "difficulty-selector") {
-                onChangeDifficulty();
+            } else if(event.target.classList.contains("difficulty-selector")) {
+                onChangeDifficulty(event.target);
             } else if(event.target.id === "players-per-team-selector") {
                 onChangePlayersPerTeam();
             } else if(event.target.id === "theme-selector") {

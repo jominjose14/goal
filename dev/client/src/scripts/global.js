@@ -78,7 +78,8 @@ export const validThemes = ["dark", "light"];
 export const validTeams = ["left", "right"];
 export const validDifficulties = ["easy", "medium", "hard"];
 export const validPlayersPerTeam = ["one", "two"];
-export const validPlayerTypes = ["main", "ai", "remote"];
+export const validPlayerTypes = ["human", "ai", "remote"];
+export const selectablePlayerTypes = ["human", "ai"];
 export const validStrikerIndices = [];
 for(let i=0; i<MAX_USERS_PER_ROOM; i++) {
     validStrikerIndices.push(i);
@@ -163,8 +164,7 @@ export const state = {
     isPaused: false,
     isGameOver: true,
     mainPlayer: null,
-    allPlayers: [],
-    nonMainPlayers: [],
+    players: [],
     puck: null,
     pointingDevice: {
         x: 0,
@@ -177,6 +177,7 @@ export const state = {
         "ArrowLeft": false,
     },
     strikerIdx: "0",
+    playerType: "human",
     offlineTeam: "left", // applies to offline mode only
     difficulty: "medium", // applies to offline mode only
     playersPerTeam: "two", // applies to offline mode only

@@ -227,8 +227,12 @@ body {
 }
 
 .menu.host {
+    .menu-btn {
+        width: 10em;
+    }
+
     .create-room-btn {
-        margin-top: 0.5em;
+        margin-top: 1.5em;
     }
 }
 
@@ -246,7 +250,7 @@ body {
                 justify-content: start;
                 align-items: center;
                 gap: 1dvh;
-                height: 22.5dvh;
+                height: 32.5dvh;
                 overflow-y: scroll;
                 padding-right: 0.6dvw;
                 min-width: 12dvw;
@@ -283,10 +287,12 @@ body {
 #board {
     background-color: transparent;
     cursor: url("images/cursor.svg") 15.5 16.5, crosshair;
+    z-index: 1;
 }
 
 .menu.pause {
     color: hsla(0, 0%, 100%, 1);
+    z-index: 3;
 
     &::backdrop {
         background-color: hsla(0, 0%, 0%, 0.25);

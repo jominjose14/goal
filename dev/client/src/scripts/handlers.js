@@ -140,8 +140,12 @@ export function onChangeOfflineTeam() {
     state.offlineTeam = document.getElementById("offline-team-selector").textContent.toLowerCase();
 }
 
-export function onChangeDifficulty() {
-    state.difficulty = document.getElementById("difficulty-selector").textContent.toLowerCase();
+export function onChangeDifficulty($selector) {
+    for(const $difficultySelector of document.querySelectorAll(".difficulty-selector")) {
+        $difficultySelector.textContent = capitalizeFirstLetter($selector.textContent.toLowerCase());
+    }
+
+    state.difficulty = $selector.textContent.toLowerCase();
 }
 
 export function onChangePlayersPerTeam() {
@@ -211,9 +215,11 @@ export async function onClickCreateRoomBtn() {
     const team = $teamSelector.textContent.toLowerCase();
     const $strikerSelector = document.getElementById("create-room-striker-selector");
     const striker = parseInt($strikerSelector.dataset.value);
+    const $playerTypeSelector = document.getElementById("create-room-player-type-selector");
+    const playerType = $playerTypeSelector.textContent.toLowerCase();
 
     startLoading();
-    await createRoom(roomName, team, striker);
+    await createRoom(roomName, team, striker, playerType);
     stopLoading();
 }
 
@@ -232,9 +238,11 @@ export async function onClickJoinRoomBtn() {
     const team = $teamSelector.textContent.toLowerCase();
     const $strikerSelector = document.getElementById("join-room-striker-selector");
     const striker = parseInt($strikerSelector.dataset.value);
+    const $playerTypeSelector = document.getElementById("join-room-player-type-selector");
+    const playerType = $playerTypeSelector.textContent.toLowerCase();
 
     startLoading();
-    await joinRoom(roomName, team, striker);
+    await joinRoom(roomName, team, striker, playerType);
     stopLoading();
 }
 

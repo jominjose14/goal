@@ -52,7 +52,7 @@ class Puck {
     handlePlayerCollisions() {
         let didPlayerCollisionOccur = false;
 
-        for(const player of state.allPlayers) {
+        for(const player of state.players) {
             const dx = this.xPos - player.xPos;
             const dy = this.yPos - player.yPos;
             const distance = Math.sqrt(dx * dx + dy * dy);

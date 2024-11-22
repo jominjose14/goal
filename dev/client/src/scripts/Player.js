@@ -163,16 +163,12 @@ export default class Player {
     }
 
     addToBoard() {
-        state.allPlayers.push(this);
-        if(this.#type !== "main") state.nonMainPlayers.push(this);
+        state.players.push(this);
     }
 
     removeFromBoard() {
-        let idx = state.nonMainPlayers.indexOf(this);
-        if(idx > -1) state.nonMainPlayers.splice(idx, 1);
-
-        idx = state.allPlayers.indexOf(this);
-        if(idx > -1) state.allPlayers.splice(idx, 1);
+        const idx = state.players.indexOf(this);
+        if(idx > -1) state.players.splice(idx, 1);
     }
 
     resetRadius() {
@@ -377,7 +373,7 @@ export default class Player {
                     this.hardAiUpdate();
                 }
             }
-        } else if(this.type === "main") {
+        } else if(this.type === "human") {
             // slow down striker using friction
             this.xVel *= this.#friction;
             this.yVel *= this.#friction;

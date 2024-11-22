@@ -39,13 +39,13 @@ function loop() {
         // clear canvas
         state.context.clearRect(0, 0, $canvas.width, $canvas.height);
 
-        if(state.nonMainPlayers.length === 0) {
-            // don't start game if mainPlayer is alone on board
+        if(state.players.length === 1) {
+            // don't start game if main player is alone on board
             drawTextAtCanvasCenter("Waiting for other players to join");
         } else {
             // render frame
             state.puck.update();
-            for (const player of state.allPlayers) player.update();
+            for (const player of state.players) player.update();
         }
 
         // send state to server
@@ -107,9 +107,9 @@ function assertsForDebug() {
 }
 
 function logForDebug() {
-    // console.log(`state.isGoal = ${state.isGoal}, state.isGameOver = ${state.isGameOver}, puck.x = ${state.puck.xPos}, puck.y = ${state.puck.yPos}, puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel}, ai.x = ${state.nonMainPlayers[0].xPos}, ai.y = ${state.nonMainPlayers[0].yPos}, ai.xVel = ${state.nonMainPlayers[0].xVel}, ai.yVel = ${state.nonMainPlayers[0].yVel}`);
-    // console.log(`puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel},\nmain.xVel = ${state.mainPlayer.xVel}, main.yVel = ${state.mainPlayer.yVel},\nai.xVel = ${state.nonMainPlayers[0].xVel}, ai.yVel = ${state.nonMainPlayers[0].yVel}`);
-    // console.log(`$canvas.width = ${$canvas.width}\npuck.xPos = ${state.puck.xPos}, puck.yPos = ${state.puck.yPos},\nmain.xPos = ${state.mainPlayer.xPos}, main.yPos = ${state.mainPlayer.yPos},\nai.xPos = ${state.nonMainPlayers[0].xPos}, ai.yPos = ${state.nonMainPlayers[0].yPos}\nstate.stuckPuckMetrics = ${JSON.stringify(state.stuckPuckMetrics, null, 2)}`);
+    // console.log(`state.isGoal = ${state.isGoal}, state.isGameOver = ${state.isGameOver}, puck.x = ${state.puck.xPos}, puck.y = ${state.puck.yPos}, puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel}, ai.x = ${state.players[1].xPos}, ai.y = ${state.players[1].yPos}, ai.xVel = ${state.players[1].xVel}, ai.yVel = ${state.players[1].yVel}`);
+    // console.log(`puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel},\nmain.xVel = ${state.mainPlayer.xVel}, main.yVel = ${state.mainPlayer.yVel},\nai.xVel = ${state.players[1].xVel}, ai.yVel = ${state.players[1].yVel}`);
+    // console.log(`$canvas.width = ${$canvas.width}\npuck.xPos = ${state.puck.xPos}, puck.yPos = ${state.puck.yPos},\nmain.xPos = ${state.mainPlayer.xPos}, main.yPos = ${state.mainPlayer.yPos},\nai.xPos = ${state.players[1].xPos}, ai.yPos = ${state.players[1].yPos}\nstate.stuckPuckMetrics = ${JSON.stringify(state.stuckPuckMetrics, null, 2)}`);
 }
 
 export function startOfflineGame() {
@@ -170,7 +170,7 @@ export function startNewRound() {
     state.isGameOver = true;
 
     state.puck.reset();
-    for (const player of state.allPlayers) {
+    for (const player of state.players) {
         player.reset();
     }
 
@@ -224,7 +224,7 @@ export function handlePuckBoardCollisions() {
 }
 
 export function handleAiPlayerBoardCollisions() {
-    for(const player of state.allPlayers) {
+    for(const player of state.players) {
         if(player.type !== "ai") continue;
 
         // x bounds for ai player on right team
@@ -254,7 +254,7 @@ export function handleAiPlayerBoardCollisions() {
 export function handlePuckPlayerCollisions() {
     let didPlayerCollisionOccur = false;
 
-    for(const player of state.allPlayers) {
+    for(const player of state.players) {
         const dx = state.puck.xPos - player.xPos;
         const dy = state.puck.yPos - player.yPos;
         const distance = Math.sqrt(dx * dx + dy * dy);
@@ -358,7 +358,7 @@ export function resizeBoard() {
 
     // Adapt puck and players
     state.puck.adaptToScreen();
-    for (const player of state.allPlayers) {
+    for (const player of state.players) {
         player.adaptToScreen();
     }
 
@@ -379,10 +379,10 @@ export function exitGame() {
 
     // reset
     state.isGameOver = true;
-    state.allPlayers = [state.mainPlayer];
-    state.nonMainPlayers = [];
+    state.players = [state.mainPlayer];
 
     state.mainPlayer.name = "You";
+    state.mainPlayer.type = "human";
 
     document.removeEventListener("keypress", onPauseUsingKeyPress);
     document.removeEventListener("dblclick", onPauseUsingDoubleClick);

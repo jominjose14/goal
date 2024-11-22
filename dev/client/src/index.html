@@ -43,10 +43,10 @@
             </button>
         </div>
         <div class="field">
-            <label for="difficulty-selector">
+            <label for="offline-difficulty-selector">
                 Difficulty
             </label>
-            <button id="difficulty-selector" class="menu-btn selector difficulty-selector" data-values="easy,medium,hard">
+            <button id="offline-difficulty-selector" class="menu-btn selector difficulty-selector" data-values="easy,medium,hard">
                 Medium
             </button>
         </div>
@@ -82,6 +82,14 @@
             <label for="sfx-volume-slider">SFX Volume</label>
             <input type="range" min="0" max="100" value="100" id="sfx-volume-slider" class="menu-slider" />
         </div>
+        <div class="field">
+            <label for="settings-difficulty-selector">
+                Difficulty
+            </label>
+            <button id="settings-difficulty-selector" class="menu-btn selector difficulty-selector" data-values="easy,medium,hard">
+                Medium
+            </button>
+        </div>
         <button class="menu-btn home-btn">Back</button>
     </div>
 
@@ -116,6 +124,12 @@
                 <img src="images/striker-0.svg" alt="Striker">
             </button>
         </div>
+        <div class="field">
+            <label for="create-room-player-type-selector">Player Type</label>
+            <button id="create-room-player-type-selector" class="menu-btn selector player-type-selector" data-values="human,ai">
+                Human
+            </button>
+        </div>
         <button class="menu-btn create-room-btn">Create Room</button>
         <button class="menu-btn home-btn">Home</button>
     </div>
@@ -140,6 +154,12 @@
                     <label for="join-room-striker-selector">Striker</label>
                     <button id="join-room-striker-selector" class="menu-btn img-selector striker-selector" data-values="0,1,2,3" data-value="0">
                         <img src="images/striker-0.svg" alt="Striker">
+                    </button>
+                </div>
+                <div class="field">
+                    <label for="join-room-player-type-selector">Player Type</label>
+                    <button id="join-room-player-type-selector" class="menu-btn selector player-type-selector" data-values="human,ai">
+                        Human
                     </button>
                 </div>
             </div>

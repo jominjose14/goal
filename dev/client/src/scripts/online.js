@@ -107,7 +107,7 @@ export function connectUsingUserName() {
     });
 }
 
-export function startOnlineGame(team, strikerIdx) {
+export function startOnlineGame(team, strikerIdx, playerType) {
     state.isOnlineGame = true;
     state.isPaused = false;
 
@@ -124,6 +124,7 @@ export function startOnlineGame(team, strikerIdx) {
     state.mainPlayer.name = state.userName;
     state.mainPlayer.team = team;
     state.mainPlayer.strikerIdx = strikerIdx;
+    state.mainPlayer.type = playerType;
 
     state.webSocketConn.onmessage = (event) => {
         state.connTimeoutMetrics.prevMsgTimestamp = window.performance.now();
@@ -134,8 +135,8 @@ export function startOnlineGame(team, strikerIdx) {
                 if (IS_DEV_MODE) console.log("Received web socket message on 'memberLeft' channel");
 
                 let playerThatLeft = null;
-                for (const player of state.nonMainPlayers) {
-                    if (player.name !== payload.userName) continue;
+                for (const player of state.players) {
+                    if (player.name !== payload.userName || player === state.mainPlayer) continue;
                     playerThatLeft = player;
                     break;
                 }
@@ -157,8 +158,8 @@ export function startOnlineGame(team, strikerIdx) {
                 if (IS_DEV_MODE) console.log(`Received web socket message on 'state' channel. Remote state originated from remote user ${payload.userName}`);
 
                 let found = false;
-                for (const player of state.nonMainPlayers) {
-                    if (player.name !== payload.userName) continue;
+                for (const player of state.players) {
+                    if (player.name !== payload.userName || player === state.mainPlayer) continue;
 
                     found = true;
 
@@ -180,7 +181,7 @@ export function startOnlineGame(team, strikerIdx) {
                 }
 
                 if (!found && payload.userName !== state.userName) { // ensure that this received remote state is not self's remote state sent back by server
-                    if (state.allPlayers.length === MAX_USERS_PER_ROOM) {
+                    if (state.players.length === MAX_USERS_PER_ROOM) {
                         console.error(`Server is trying to add a new player when room is full; current room count is ${MAX_USERS_PER_ROOM}`);
                         return;
                     }
@@ -210,7 +211,7 @@ export function startOnlineGame(team, strikerIdx) {
     startNewRound();
 }
 
-export async function createRoom(roomName, team, strikerIdx) {
+export async function createRoom(roomName, team, strikerIdx, playerType) {
     const $errorMsg = $createRoomMenu.querySelector(".error-msg");
     const protocol = IS_DEV_MODE ? "http" : "https";
     let response = null;
@@ -244,7 +245,7 @@ export async function createRoom(roomName, team, strikerIdx) {
 
     if (response !== null && response.ok) {
         state.isHost = true;
-        startOnlineGame(team, strikerIdx);
+        startOnlineGame(team, strikerIdx, playerType);
     } else if (response !== null) {
         const serverErrorMsg = await response.text();
         $errorMsg.textContent = capitalizeFirstLetter(serverErrorMsg);
@@ -309,7 +310,7 @@ export async function getRoomList() {
     resetStrikerSelectorValues(document.getElementById("join-room-striker-selector"));
 }
 
-export async function joinRoom(roomName, team, strikerIdx) {
+export async function joinRoom(roomName, team, strikerIdx, playerType) {
     const $errorMsg = $joinRoomMenu.querySelector(".error-msg");
     $errorMsg.textContent = "";
     const protocol = IS_DEV_MODE ? "http" : "https";
@@ -336,7 +337,7 @@ export async function joinRoom(roomName, team, strikerIdx) {
 
     if (response !== null && response.ok) {
         state.isHost = false;
-        startOnlineGame(team, strikerIdx);
+        startOnlineGame(team, strikerIdx, playerType);
     } else if (response !== null) {
         $errorMsg.textContent = await response.text();
     } else {
