@@ -385,7 +385,7 @@ export default class Player {
             this.updatePosByAcceleratingTo(state.pointingDevice.x, state.pointingDevice.y);
         }
 
-        // player of type="main" (mainPlayer) is updated by updatePosByAcceleratingTo()
+        // mainPlayer is updated by updatePosByAcceleratingTo()
         // player of type="remote" is updated using payload received via web socket connection
 
         this.draw();

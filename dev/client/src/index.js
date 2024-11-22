@@ -63,7 +63,7 @@ function main() {
     attachEventListeners();
     initializeParameters();
 
-    state.mainPlayer = new Player("You", 0, state.offlineTeam, "main");
+    state.mainPlayer = new Player("You", 0, state.offlineTeam, "human");
     state.mainPlayer.reset();
     state.mainPlayer.addToBoard();
 
