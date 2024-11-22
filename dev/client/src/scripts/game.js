@@ -8,57 +8,61 @@ import {
     $pauseMenu,
     $rightScore,
     $scores,
-    FPS,
+    FPS, GAME_LOOP_INTERVAL_TIMEOUT,
     IS_DEV_MODE,
-    MILLISECONDS_BTW_FRAMES,
+    MILLISECONDS_BTW_FRAMES, PUCK_PLAYER_COLLISION_COOLDOWN,
     state,
-    X_BOARD_RINK_FRACTION,
+    X_BOARD_RINK_FRACTION, Y_BOARD_RINK_FRACTION, Y_GOAL_END_FRACTION, Y_GOAL_START_FRACTION,
 } from "./global.js";
 import {closeModal, drawTextAtCanvasCenter, hide, hideAllMenus, incrementScore, show, showToast} from "./util.js";
 import {resetPostDisconnect, sendRemoteState} from "./online.js";
 import {onPauseUsingDoubleClick, onPauseUsingKeyPress} from "./handlers.js";
 import {playSound} from "./audio.js";
 
-export function startRefreshingCanvas() {
+export function startGameLoop() {
     resetStuckPuckMetrics();
     state.fpsMetrics.prevFrameTimestamp = window.performance.now();
-    requestAnimationFrame(refreshCanvas);
+    requestAnimationFrame(loop);
 }
 
-function refreshCanvas() {
-    if (!state.isGameOver && (state.isOnlineGame || !state.isPaused)) requestAnimationFrame(refreshCanvas);
-
-    // tasks that must happen faster than refresh rate
-    if (!state.isGoal) updateStuckPuckMetrics();
-    // TODO: implement anti-overlap if relative acceleration is 0 or reducing for each pair of items that can collide
+function loop() {
+    let shouldLoop = !state.isGameOver && (state.isOnlineGame || !state.isPaused);
+    if(!shouldLoop) return;
 
     const now = window.performance.now();
     const timeElapsedSincePrevFrame = now - state.fpsMetrics.prevFrameTimestamp;
-    if(timeElapsedSincePrevFrame < MILLISECONDS_BTW_FRAMES) return; // skip frame
 
-    // if we reach here, we are rendering a new frame
-    state.fpsMetrics.prevFrameTimestamp = now - timeElapsedSincePrevFrame % MILLISECONDS_BTW_FRAMES; // the modulo op is an adjustment in case millisecondsBetweenFrames is not a multiple of screen's built-in millisecondsBetweenFrames (for 60Hz it is 1000/60 = 16.7ms)
+    if(MILLISECONDS_BTW_FRAMES <= timeElapsedSincePrevFrame) {
+        // if we reach here, we are rendering a new frame
+        state.fpsMetrics.prevFrameTimestamp = now - timeElapsedSincePrevFrame % MILLISECONDS_BTW_FRAMES; // the modulo op is an adjustment in case millisecondsBetweenFrames is not a multiple of screen's built-in millisecondsBetweenFrames (for 60Hz it is 1000/60 = 16.7ms)
 
-    // send state to server
-    if(state.isOnlineGame) sendRemoteState();
+        // clear canvas
+        state.context.clearRect(0, 0, $canvas.width, $canvas.height);
 
-    // clear canvas
-    state.context.clearRect(0, 0, $canvas.width, $canvas.height);
+        if(state.nonMainPlayers.length === 0) {
+            // don't start game if mainPlayer is alone on board
+            drawTextAtCanvasCenter("Waiting for other players to join");
+        } else {
+            // render frame
+            state.puck.update();
+            for (const player of state.allPlayers) player.update();
+        }
 
-    // don't start game if mainPlayer is alone on board
-    if(state.nonMainPlayers.length === 0) {
-        drawTextAtCanvasCenter("Waiting for other players to join");
-        return;
-    }
+        // send state to server
+        if(state.isOnlineGame) sendRemoteState();
 
-    // frame render logic
-    state.puck.update();
-    for (const player of state.allPlayers) player.update();
+        if(IS_DEV_MODE) {
+            state.fpsMetrics.canvasFpsCounter++;
+            // debugOpsPerRefresh();
+        }
+    } // else, skip frame
 
-    if(IS_DEV_MODE) {
-        state.fpsMetrics.canvasFpsCounter++;
-        debugOpsPerRefresh();
-    }
+    // activities performed at frequency higher than FPS
+    if(!state.isGoal) updateStuckPuckMetrics();
+    handleCollisions();
+
+    shouldLoop = !state.isGameOver && (state.isOnlineGame || !state.isPaused);
+    if(shouldLoop) requestAnimationFrame(loop);
 }
 
 function debugOpsPerRefresh() {
@@ -105,7 +109,7 @@ function assertsForDebug() {
 function logForDebug() {
     // console.log(`state.isGoal = ${state.isGoal}, state.isGameOver = ${state.isGameOver}, puck.x = ${state.puck.xPos}, puck.y = ${state.puck.yPos}, puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel}, ai.x = ${state.nonMainPlayers[0].xPos}, ai.y = ${state.nonMainPlayers[0].yPos}, ai.xVel = ${state.nonMainPlayers[0].xVel}, ai.yVel = ${state.nonMainPlayers[0].yVel}`);
     // console.log(`puck.xVel = ${state.puck.xVel}, puck.yVel = ${state.puck.yVel},\nmain.xVel = ${state.mainPlayer.xVel}, main.yVel = ${state.mainPlayer.yVel},\nai.xVel = ${state.nonMainPlayers[0].xVel}, ai.yVel = ${state.nonMainPlayers[0].yVel}`);
-    console.log(`$canvas.width = ${$canvas.width}\npuck.xPos = ${state.puck.xPos}, puck.yPos = ${state.puck.yPos},\nmain.xPos = ${state.mainPlayer.xPos}, main.yPos = ${state.mainPlayer.yPos},\nai.xPos = ${state.nonMainPlayers[0].xPos}, ai.yPos = ${state.nonMainPlayers[0].yPos}\nstate.stuckPuckMetrics = ${JSON.stringify(state.stuckPuckMetrics, null, 2)}`);
+    // console.log(`$canvas.width = ${$canvas.width}\npuck.xPos = ${state.puck.xPos}, puck.yPos = ${state.puck.yPos},\nmain.xPos = ${state.mainPlayer.xPos}, main.yPos = ${state.mainPlayer.yPos},\nai.xPos = ${state.nonMainPlayers[0].xPos}, ai.yPos = ${state.nonMainPlayers[0].yPos}\nstate.stuckPuckMetrics = ${JSON.stringify(state.stuckPuckMetrics, null, 2)}`);
 }
 
 export function startOfflineGame() {
@@ -172,7 +176,118 @@ export function startNewRound() {
 
     state.isGameOver = false;
     state.isGoal = false;
-    startRefreshingCanvas();
+    startGameLoop();
+}
+
+export function handleCollisions() {
+    handleAiPlayerBoardCollisions();
+    if(state.isGoal) return;
+
+    // Collisions involving puck
+    handlePuckBoardCollisions();
+    handlePuckPlayerCollisions();
+}
+
+export function handlePuckBoardCollisions() {
+    const xBoardBoundStart = X_BOARD_RINK_FRACTION * $canvas.width + state.puck.radius;
+    const xBoardBoundEnd = $canvas.width * (1 - X_BOARD_RINK_FRACTION) - state.puck.radius;
+    const yBoardBoundStart = Y_BOARD_RINK_FRACTION * $canvas.height + state.puck.radius;
+    const yBoardBoundEnd = $canvas.height * (1 - Y_BOARD_RINK_FRACTION) - state.puck.radius;
+    const yGoalStart = Y_GOAL_START_FRACTION * $canvas.height + 2 * state.puck.radius;
+    const yGoalEnd = Y_GOAL_END_FRACTION * $canvas.height - 2 * state.puck.radius;
+
+    // handle goal
+    if((state.puck.xPos < xBoardBoundStart || xBoardBoundEnd < state.puck.xPos) && yGoalStart < state.puck.yPos && state.puck.yPos < yGoalEnd || isNaN(state.puck.xPos)) {
+        handleGoal();
+        return;
+    }
+
+    // Handle collision with board's rink
+    let didBoardCollisionOccur = false;
+    if(state.puck.xPos <= xBoardBoundStart || xBoardBoundEnd <= state.puck.xPos) {
+        state.puck.xVel *= -1;
+        didBoardCollisionOccur = true;
+    }
+    if(state.puck.yPos <= yBoardBoundStart || yBoardBoundEnd <= state.puck.yPos) {
+        state.puck.yVel *= -1;
+        didBoardCollisionOccur = true;
+    }
+    if(didBoardCollisionOccur) {
+        playSound("boardHit", false);
+    }
+
+    // Handle edge case: if puck is stuck within rink area, reset its position
+    if(state.puck.xPos < xBoardBoundStart) state.puck.xPos = xBoardBoundStart + 1;
+    if(xBoardBoundEnd < state.puck.xPos) state.puck.xPos = xBoardBoundEnd - 1;
+    if(state.puck.yPos < yBoardBoundStart) state.puck.yPos = yBoardBoundStart + 1;
+    if(yBoardBoundEnd < state.puck.yPos) state.puck.yPos = yBoardBoundEnd - 1;
+}
+
+export function handleAiPlayerBoardCollisions() {
+    for(const player of state.allPlayers) {
+        if(player.type !== "ai") continue;
+
+        // x bounds for ai player on right team
+        let xBoundStart = $canvas.width/2 + player.radius;
+        let xBoundEnd = $canvas.width * (1 - X_BOARD_RINK_FRACTION) - player.radius;
+
+        if(player.team === "left") {
+            xBoundStart = $canvas.width * X_BOARD_RINK_FRACTION + player.radius;
+            xBoundEnd = $canvas.width/2 - player.radius;
+        }
+
+        const yBoundStart = Y_BOARD_RINK_FRACTION * $canvas.height + player.radius;
+        const yBoundEnd = $canvas.height * (1 - Y_BOARD_RINK_FRACTION) - player.radius;
+
+        if(player.xPos <= xBoundStart || xBoundEnd <= player.xPos) {
+            player.xVel = 0;
+            player.xPos = player.xPos <= xBoundStart ? xBoundStart + 1 : xBoundEnd - 1;
+        }
+
+        if(player.yPos <= yBoundStart || yBoundEnd <= player.yPos) {
+            player.yVel = 0;
+            player.yPos = player.yPos <= yBoundStart ? yBoundStart + 1 : yBoundEnd - 1;
+        }
+    }
+}
+
+export function handlePuckPlayerCollisions() {
+    let didPlayerCollisionOccur = false;
+
+    for(const player of state.allPlayers) {
+        const dx = state.puck.xPos - player.xPos;
+        const dy = state.puck.yPos - player.yPos;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const radiiSum = state.puck.radius + player.radius
+        const isColliding = distance <= radiiSum;
+
+        const durationSinceLastCollision = window.performance.now() - player.prevCollisionTimestamp;
+        const mustSkipCollision = durationSinceLastCollision < PUCK_PLAYER_COLLISION_COOLDOWN;
+
+        if(!isColliding || mustSkipCollision) continue;
+        // if(!isColliding) continue;
+
+        // play sound
+        // if(!mustSkipCollision) playSound("playerHit", false);
+
+        didPlayerCollisionOccur = true;
+        player.prevCollisionTimestamp = window.performance.now();
+
+        // update velocities
+        const cos = dx/distance;
+        const sin = dy/distance;
+
+        state.puck.xVel = 2 * (player.xVel * cos + player.yVel * sin) * cos - (state.puck.xVel * cos + state.puck.yVel * sin) * cos;
+        state.puck.yVel = 2 * (player.xVel * cos + player.yVel * sin) * sin - (state.puck.xVel * cos + state.puck.yVel * sin) * sin;
+
+        // teleport puck out of collision range
+        state.puck.xPos = player.xPos + dx * radiiSum/distance;
+        state.puck.yPos = player.yPos + dy * radiiSum/distance;
+    }
+
+    if(didPlayerCollisionOccur) {
+        playSound("playerHit", false);
+    }
 }
 
 export function handleGoal() {

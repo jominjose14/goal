@@ -1,22 +1,36 @@
 import {
     $canvas,
     $createRoomMenu,
-    $fullscreenToggles, $sfxVolumeSlider,
+    $fullscreenToggles,
+    $sfxVolumeSlider,
     $homeMenu,
-    $joinRoomMenu, $masterVolumeSlider, $musicVolumeSlider,
+    $joinRoomMenu,
+    $masterVolumeSlider,
+    $musicVolumeSlider,
     $muteToggles,
     $offlineMenu,
     $onlineMenu,
-    $pauseMenu, INITIAL_FX_GAIN, INITIAL_MASTER_GAIN, INITIAL_MUSIC_GAIN,
+    $pauseMenu,
+    INITIAL_FX_GAIN,
+    INITIAL_MASTER_GAIN,
+    INITIAL_MUSIC_GAIN,
     IS_DEV_MODE,
-    state, validThemes, validDifficulties, validStrikerIndices, validTeams, validPlayersPerTeam,
+    state,
+    validThemes,
+    validDifficulties,
+    validStrikerIndices,
+    validTeams,
+    validPlayersPerTeam,
+    $fpsDisplay,
+    IS_HANDHELD_DEVICE,
 } from "./scripts/global.js";
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
-import {exitGame, resizeBoard, startOfflineGame} from "./scripts/game.js";
-import {capitalizeFirstLetter, isHandheldDevice, startLoading, stopLoading} from "./scripts/util.js";
+import {resizeBoard, startOfflineGame} from "./scripts/game.js";
+import {capitalizeFirstLetter, isHandheldDevice, show, startLoading, stopLoading} from "./scripts/util.js";
 import {getRoomList} from "./scripts/online.js";
 import {
+    onArrowKeyDown, onArrowKeyUp,
     onChangeDifficulty,
     onChangeOfflineTeam,
     onChangeOrientation,
@@ -56,10 +70,12 @@ function main() {
 
     state.puck = new Puck(0, 0);
 
-    if(isHandheldDevice()) {
+    if(IS_HANDHELD_DEVICE) {
         $canvas.addEventListener("touchmove", event => onTouchMove(event));
     } else {
         $canvas.addEventListener("mousemove", event => onMouseMove(event));
+        // window.addEventListener("keydown", event => onArrowKeyDown(event));
+        // window.addEventListener("keyup", event => onArrowKeyUp(event));
     }
 
     window.addEventListener("resize", onResize);
@@ -69,12 +85,12 @@ function main() {
 }
 
 function debugOps() {
-    // show($fpsDisplay);
-    //
-    // setInterval(() => {
-    //     $fpsDisplay.textContent = state.fpsMetrics.canvasFpsCounter.toString();
-    //     state.fpsMetrics.canvasFpsCounter = 0;
-    // }, 1000);
+    show($fpsDisplay);
+
+    setInterval(() => {
+        $fpsDisplay.textContent = state.fpsMetrics.canvasFpsCounter.toString();
+        state.fpsMetrics.canvasFpsCounter = 0;
+    }, 1000);
 }
 
 function initializeParameters() {

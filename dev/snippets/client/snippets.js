@@ -370,3 +370,17 @@ function oldAudioSetup() {
         goal: new Audio("../audio/goal.mp3"),
     }
 }
+
+function geminiCollisionLogic() {
+    let relVelX = state.puck.xVel - player.xVel;
+    let relVelY = state.puck.yVel - player.yVel;
+
+    let normalX = (player.xPos - state.puck.xPos) / distance;
+    let normalY = (player.yPos - state.puck.yPos) / distance;
+
+    let relVelNormal = relVelX * normalX + relVelY * normalY;
+    let impulse = 2 * relVelNormal;
+
+    state.puck.xVel += impulse * normalX;
+    state.puck.yVel += impulse * normalY;
+}

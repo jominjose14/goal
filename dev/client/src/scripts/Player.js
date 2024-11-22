@@ -1,10 +1,19 @@
 import {
     $canvas,
     X_BOARD_RINK_FRACTION,
-    Y_BOARD_RINK_FRACTION, FPS,
-    MAIN_PLAYER_VEL_MULTIPLIER, MAX_USERS_PER_ROOM,
+    Y_BOARD_RINK_FRACTION,
+    FPS,
+    MAIN_PLAYER_VEL_MULTIPLIER,
+    MAX_USERS_PER_ROOM,
     PLAYER_RADIUS_FRACTION,
-    state, strikers, IS_DEV_MODE, MAX_USERNAME_LENGTH, validTeams, validPlayerTypes, validDifficulties
+    state,
+    strikers,
+    IS_DEV_MODE,
+    MAX_USERNAME_LENGTH,
+    validTeams,
+    validPlayerTypes,
+    validDifficulties,
+    MAIN_PLAYER_ACCEL, IS_HANDHELD_DEVICE, STRIKER_FRICTION
 } from "./global.js";
 
 import {clamp} from "./util.js";
@@ -20,6 +29,7 @@ export default class Player {
     #yPos;
     #xVel = 0;
     #yVel = 0;
+    #friction;
     #timestampToMeasureVel = null;
     prevCollisionTimestamp = 0;
 
@@ -30,6 +40,7 @@ export default class Player {
         this.#team = team;
         this.#type = type;
         this.#intelligence = state.difficulty;
+        this.#friction = STRIKER_FRICTION;
     }
 
     get name() {
@@ -135,7 +146,9 @@ export default class Player {
 
     set xVel(xVel) {
         if(isNaN(xVel)) return;
-        this.#xVel = clamp(-$canvas.width, xVel, $canvas.width);
+        const abs = Math.abs(xVel);
+        // this.#xVel = clamp(-$canvas.width, xVel, $canvas.width);
+        this.#xVel = Math.sign(xVel) * Math.min(abs, FPS/2);
     }
 
     get yVel() {
@@ -144,7 +157,9 @@ export default class Player {
 
     set yVel(yVel) {
         if(isNaN(yVel)) return;
-        this.#yVel = clamp(-$canvas.height, yVel, $canvas.height);
+        const abs = Math.abs(yVel);
+        // this.#yVel = clamp(-$canvas.height, yVel, $canvas.height);
+        this.#yVel = Math.sign(yVel) * Math.min(abs, FPS/2);
     }
 
     addToBoard() {
@@ -185,61 +200,69 @@ export default class Player {
         this.yVel = 0;
     }
 
-    updatePosViaUserInput(x, y) {
-        if(this.#team === "left") {
-            const xBoardBoundStart = X_BOARD_RINK_FRACTION * $canvas.width + this.#radius;
-            const xBoardBoundEnd = $canvas.width/2 - this.#radius;
-            x = clamp(xBoardBoundStart, x, xBoardBoundEnd);
-        } else {
-            const xBoardBoundStart = $canvas.width/2 + this.#radius;
-            const xBoardBoundEnd = $canvas.width * (1 - X_BOARD_RINK_FRACTION) - this.#radius;
-            x = clamp(xBoardBoundStart, x, xBoardBoundEnd);
-        }
-
-        const yBoardBoundStart = Y_BOARD_RINK_FRACTION * $canvas.height + this.#radius;
-        const yBoardBoundEnd = $canvas.height * (1 - Y_BOARD_RINK_FRACTION) - this.#radius;
-        y = clamp(yBoardBoundStart, y, yBoardBoundEnd);
-
-        if(this.#timestampToMeasureVel == null) {
-            this.#timestampToMeasureVel = window.performance.now();
-            this.xPos = x;
-            this.yPos = y;
-        }
-
-        const now = window.performance.now();
-        const dt = Math.max(1, now - this.#timestampToMeasureVel); // max op to prevent zero division
+    updatePosByAcceleratingTo(x, y) {
         const dx = x - this.xPos;
         const dy = y - this.yPos;
-        this.xVel = MAIN_PLAYER_VEL_MULTIPLIER * dx / dt;
-        this.yVel = MAIN_PLAYER_VEL_MULTIPLIER * dy / dt;
 
-        this.#timestampToMeasureVel = Date.now();
-        this.xPos = x;
-        this.yPos = y;
+        // switch(Math.sign(dx)) {
+        //     case 1: this.xVel = Math.max(0, this.xVel + MAIN_PLAYER_ACCEL);
+        //         break;
+        //
+        //     case -1: this.xVel = Math.min(0, this.xVel - MAIN_PLAYER_ACCEL);
+        //         break;
+        //
+        //     default: this.xVel = 0;
+        // }
+        //
+        // switch(Math.sign(dy)) {
+        //     case 1: this.yVel = Math.max(0, this.yVel + MAIN_PLAYER_ACCEL);
+        //         break;
+        //
+        //     case -1: this.yVel = Math.min(0, this.yVel - MAIN_PLAYER_ACCEL);
+        //         break;
+        //
+        //     default: this.yVel = 0;
+        // }
+
+        const multiplier = 0.35;
+        this.xVel = multiplier * dx;
+        this.yVel = multiplier * dy;
+
+        this.xPos += this.xVel;
+        this.yPos += this.yVel;
     }
 
-    onAiCollideWithBounds() {
-        // x bounds for ai player on right team
-        let xBoundStart = $canvas.width/2 + this.#radius;
-        let xBoundEnd = $canvas.width * (1 - X_BOARD_RINK_FRACTION) - this.#radius;
+    updatePosUsingKeys() {
+        for(const key of Object.keys(state.pressedKeys)) {
+            if(!state.pressedKeys[key]) continue;
 
-        if(this.#team === "left") {
-            xBoundStart = $canvas.width * X_BOARD_RINK_FRACTION + this.#radius;
-            xBoundEnd = $canvas.width/2 - this.#radius;
+            switch(key) {
+                case "ArrowUp": this.yVel = Math.min(0, this.yVel - MAIN_PLAYER_ACCEL);
+                    break;
+
+                case "ArrowRight": this.xVel = Math.max(0, this.xVel + MAIN_PLAYER_ACCEL);
+                    break;
+
+                case "ArrowDown": this.yVel = Math.max(0, this.yVel + MAIN_PLAYER_ACCEL);
+                    break;
+
+                case "ArrowLeft": this.xVel = Math.min(0, this.xVel - MAIN_PLAYER_ACCEL);
+                    break;
+
+                default: console.error("Invalid arrow key");
+            }
         }
 
-        const yBoundStart = Y_BOARD_RINK_FRACTION * $canvas.height + this.#radius;
-        const yBoundEnd = $canvas.height * (1 - Y_BOARD_RINK_FRACTION) - this.#radius;
+        this.xPos += this.xVel;
+        this.yPos += this.yVel;
+    }
 
-        if(this.xPos <= xBoundStart || xBoundEnd <= this.xPos) {
-            this.xVel = 0;
-            this.xPos = this.xPos <= xBoundStart ? xBoundStart + 1 : xBoundEnd - 1;
-        }
+    updateVelUsingJoyStick(x, y) {
+        const xAccel = MAIN_PLAYER_ACCEL * x;
+        const yAccel = MAIN_PLAYER_ACCEL * y;
 
-        if(this.yPos <= yBoundStart || yBoundEnd <= this.yPos) {
-            this.yVel = 0;
-            this.yPos = this.yPos <= yBoundStart ? yBoundStart + 1 : yBoundEnd - 1;
-        }
+        this.xVel += xAccel;
+        this.yVel += yAccel;
     }
 
     easyAiUpdate() {
@@ -333,7 +356,7 @@ export default class Player {
         const maxDiff = ($canvas.height * (1 - 2 * Y_BOARD_RINK_FRACTION) - 2 * this.radius) / 2;
         let y = state.puck.yPos + state.puck.radius * diff / maxDiff;
 
-        this.updatePosViaUserInput(x, y);
+        this.updatePosByAcceleratingTo(x, y);
 
         this.xVel = (this.team === "right" ? -1 : 1) * Math.max(10 * 60/FPS, Math.abs(this.xVel));
         this.yVel = (state.puck.yPos < this.yPos ? -1 : 1) * Math.max(10 * 60/FPS, Math.abs(this.yVel));
@@ -341,9 +364,7 @@ export default class Player {
 
     update() {
         if(this.type === "ai") {
-            this.onAiCollideWithBounds();
-
-            switch(this.#intelligence) {
+            switch(this.intelligence) {
                 case "easy": {
                     this.easyAiUpdate();
                 }
@@ -356,9 +377,19 @@ export default class Player {
                     this.hardAiUpdate();
                 }
             }
+        } else if(this.type === "main") {
+            // slow down striker using friction
+            this.xVel *= this.#friction;
+            this.yVel *= this.#friction;
+
+            // update pos using key controls
+            // this.updatePosUsingKeys();
+
+            // update pos using pointing device input
+            this.updatePosByAcceleratingTo(state.pointingDevice.x, state.pointingDevice.y);
         }
 
-        // player of type="main" (mainPlayer) is updated by updatePosViaUserInput()
+        // player of type="main" (mainPlayer) is updated by updatePosByAcceleratingTo()
         // player of type="remote" is updated using payload received via web socket connection
 
         this.draw();

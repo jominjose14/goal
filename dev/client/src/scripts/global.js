@@ -1,5 +1,8 @@
+import {isHandheldDevice} from "./util.js";
+
 // == Constants ==
 export const IS_DEV_MODE = true;
+export const IS_HANDHELD_DEVICE = isHandheldDevice();
 
 // online
 export const domain = (new URL(window.location.href)).host;
@@ -44,6 +47,8 @@ export const $canvas = document.getElementById("board");
 // graphics
 export const X_BOARD_RINK_FRACTION = 0.008; // for 16:9 aspect ratio
 export const Y_BOARD_RINK_FRACTION = 0.014; // for 16:9 aspect ratio
+export const Y_GOAL_START_FRACTION = 320/900;
+export const Y_GOAL_END_FRACTION = 580/900;
 export const PUCK_RADIUS_FRACTION = 0.015; // TODO: make this ratio editable in settings
 export const PLAYER_RADIUS_FRACTION = 0.0225 // TODO: make this ratio editable in settings
 export const PUCK_COLOR = "hsla(0, 0%, 100%, 1)";
@@ -55,12 +60,15 @@ export const X_PUCK_MAX_VEL_DIVIDEND = 3 * (FPS/60) * 16; // TODO: handle for no
 export const Y_PUCK_MAX_VEL_DIVIDEND = 3 * (FPS/60) * 9; // TODO: handle for non 16:9 aspect ratios
 export const PUCK_MIN_SPEED = 1; // measured in px/frame
 export const PUCK_FRICTION = 0.999; // fraction of speed retained after deceleration caused by friction
+export const STRIKER_FRICTION = 0.999; // fraction of speed retained after deceleration caused by friction
 export const PUCK_COLLISION_ESCAPE_MULTIPLIER = 2.5;
 export const MAIN_PLAYER_VEL_MULTIPLIER = 2.5;
+export const MAIN_PLAYER_ACCEL = 1.5;
 export const AI_PLAYER_ACCEL = 2.5;
 export const STUCK_PUCK_MAX_DURATION = 10; // measured in seconds
-export const PUCK_PLAYER_COLLISION_COOLDOWN = 250; // measured in milliseconds
+export const PUCK_PLAYER_COLLISION_COOLDOWN = 200; // measured in milliseconds
 export const TOAST_DURATION = 3000; // measured in milliseconds
+export const GAME_LOOP_INTERVAL_TIMEOUT = 1; // measured in milliseconds
 export const INITIAL_MASTER_GAIN = 1;
 export const INITIAL_MUSIC_GAIN = 0.9;
 export const INITIAL_FX_GAIN = 0.8;
@@ -158,6 +166,16 @@ export const state = {
     allPlayers: [],
     nonMainPlayers: [],
     puck: null,
+    pointingDevice: {
+        x: 0,
+        y: 0,
+    },
+    pressedKeys: {
+        "ArrowUp": false,
+        "ArrowRight": false,
+        "ArrowDown": false,
+        "ArrowLeft": false,
+    },
     strikerIdx: "0",
     offlineTeam: "left", // applies to offline mode only
     difficulty: "medium", // applies to offline mode only

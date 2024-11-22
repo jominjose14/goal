@@ -287,12 +287,12 @@ export async function getRoomList() {
                 $room.classList.add("menu-btn", "join-room-item");
                 $room.textContent = room.roomName;
 
-                $room.dataset.idx = i;
+                $room.dataset.idx = i.toString();
                 $room.dataset.name = room.roomName;
 
                 const joinableTeams = [];
-                if (room.canJoinLeftTeam) joinableTeams.push("Left");
-                if (room.canJoinRightTeam) joinableTeams.push("Right");
+                if (room.canJoinLeftTeam) joinableTeams.push("left");
+                if (room.canJoinRightTeam) joinableTeams.push("right");
                 $room.dataset.teams = joinableTeams.join(",");
 
                 $room.dataset.strikers = room.availableStrikers.join(",");

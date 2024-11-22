@@ -23,7 +23,7 @@ import {
     stopLoading
 } from "./util.js";
 import {connectUsingUserName, createRoom, getRoomList, joinRoom, resetPostDisconnect} from "./online.js";
-import {exitGame, resizeBoard, startRefreshingCanvas} from "./game.js";
+import {exitGame, resizeBoard, startGameLoop} from "./game.js";
 import {fxGain, masterGain, musicGain, playSound} from "./audio.js";
 
 export function onClickOnlineGameBtn() {
@@ -266,7 +266,7 @@ export function onResume(event) {
     closeModal(event.target);
     hide($pauseMenu);
     state.isPaused = false;
-    startRefreshingCanvas();
+    startGameLoop();
 }
 
 export function onExit() {
@@ -280,13 +280,27 @@ export function onExit() {
 export function onMouseMove(event) {
     const offsetX = event.offsetX !== undefined ? event.offsetX : event.layerX;
     const offsetY = event.offsetY !== undefined ? event.offsetY : event.layerY;
-    requestAnimationFrame(() => state.mainPlayer.updatePosViaUserInput(offsetX, offsetY));
+    // requestAnimationFrame(() => state.mainPlayer.updatePosByAcceleratingTo(offsetX, offsetY));
+    state.pointingDevice.x = offsetX;
+    state.pointingDevice.y = offsetY;
+}
+
+export function onArrowKeyDown(event) {
+    if(event.key !== "ArrowUp" && event.key !== "ArrowRight" && event.key !== "ArrowDown" && event.key !== "ArrowLeft") return;
+    state.pressedKeys[event.key] = true;
+}
+
+export function onArrowKeyUp(event) {
+    if(event.key !== "ArrowUp" && event.key !== "ArrowRight" && event.key !== "ArrowDown" && event.key !== "ArrowLeft") return;
+    state.pressedKeys[event.key] = false;
 }
 
 export function onTouchMove(event) {
     const offsetX = event.targetTouches[0].clientX - event.target.getBoundingClientRect().left;
     const offsetY = event.targetTouches[0].clientY - event.target.getBoundingClientRect().top;
-    requestAnimationFrame(() => state.mainPlayer.updatePosViaUserInput(offsetX, offsetY));
+    // requestAnimationFrame(() => state.mainPlayer.updatePosByAcceleratingTo(offsetX, offsetY));
+    state.pointingDevice.x = offsetX;
+    state.pointingDevice.y = offsetY;
 }
 
 export function onResize() {
