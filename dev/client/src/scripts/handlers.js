@@ -1,27 +1,5 @@
-import {
-    $createRoomMenu,
-    $fullscreenToggles,
-    $homeMenu,
-    $joinRoomMenu, $masterVolumeSlider,
-    $muteToggles,
-    $offlineMenu,
-    $onlineMenu,
-    $pauseMenu,
-    $rotateScreenPopup, $settingsMenu,
-    state,
-    strikerImgUrls
-} from "./global.js";
-import {
-    capitalizeFirstLetter,
-    clamp,
-    closeModal,
-    hide,
-    resetImgSelector,
-    resetTextSelector,
-    show,
-    startLoading,
-    stopLoading
-} from "./util.js";
+import {$createRoomMenu, $fullscreenToggles, $homeMenu, $joinRoomMenu, $masterVolumeSlider, $muteToggles, $offlineMenu, $onlineMenu, $pauseMenu, $rotateScreenPopup, $settingsMenu, createRoomPlayerTypeSelector, createRoomStrikerSelector, createRoomTeamSelector, joinRoomPlayerTypeSelector, joinRoomStrikerSelector, joinRoomTeamSelector, state, strikerImgUrls} from "./global.js";
+import {clamp, closeModal, hide, show, startLoading, stopLoading} from "./util.js";
 import {connectUsingUserName, createRoom, getRoomList, joinRoom, resetPostDisconnect} from "./online.js";
 import {exitGame, resizeBoard, startGameLoop} from "./game.js";
 import {fxGain, masterGain, musicGain, playSound} from "./audio.js";
@@ -99,29 +77,29 @@ export function onClickHomeBtn($element) {
     show($homeMenu);
 }
 
-export function onSelectorClick($element) {
-    const values = $element.dataset.values.split(",");
-    const currValue = $element.textContent.trim().toLowerCase();
-
-    for (let i = 0; i < values.length; i++) {
-        if (values[i] === currValue) {
-            $element.textContent = capitalizeFirstLetter(values[(i + 1) % values.length]);
-            break;
-        }
-    }
-}
-
-export function onImgSelectorClick($imgSelector) {
-    const values = $imgSelector.dataset.values.split(",");
-    const currValue = $imgSelector.dataset.value;
-
-    for (let i = 0; i < values.length; i++) {
-        if (values[i] === currValue) {
-            $imgSelector.dataset.value = values[(i + 1) % values.length];
-            break;
-        }
-    }
-}
+// export function onSelectorClick($element) {
+//     const values = $element.dataset.values.split(",");
+//     const currValue = $element.textContent.trim().toLowerCase();
+//
+//     for (let i = 0; i < values.length; i++) {
+//         if (values[i] === currValue) {
+//             $element.textContent = capitalizeFirstLetter(values[(i + 1) % values.length]);
+//             break;
+//         }
+//     }
+// }
+//
+// export function onImgSelectorClick($imgSelector) {
+//     const values = $imgSelector.dataset.values.split(",");
+//     const currValue = $imgSelector.dataset.value;
+//
+//     for (let i = 0; i < values.length; i++) {
+//         if (values[i] === currValue) {
+//             $imgSelector.dataset.value = values[(i + 1) % values.length];
+//             break;
+//         }
+//     }
+// }
 
 export function onChangeOrientation(event) {
     if (event === undefined && window.innerWidth < window.innerHeight || event !== undefined && event.target.type.includes("portrait")) {
@@ -136,25 +114,25 @@ export function onChangeOrientation(event) {
     }
 }
 
-export function onChangeOfflineTeam() {
-    state.offlineTeam = document.getElementById("offline-team-selector").textContent.toLowerCase();
-}
-
-export function onChangeDifficulty($selector) {
-    for(const $difficultySelector of document.querySelectorAll(".difficulty-selector")) {
-        $difficultySelector.textContent = capitalizeFirstLetter($selector.textContent.toLowerCase());
-    }
-
-    state.difficulty = $selector.textContent.toLowerCase();
-}
-
-export function onChangePlayersPerTeam() {
-    state.playersPerTeam = document.getElementById("players-per-team-selector").textContent.toLowerCase();
-}
-
-export function onChangeTheme() {
-    state.theme = document.getElementById("theme-selector").textContent.toLowerCase();
-}
+// export function onChangeOfflineTeam() {
+//     state.offlineTeam = document.getElementById("offline-team-selector").textContent.toLowerCase();
+// }
+//
+// export function onChangeDifficulty($selector) {
+//     for(const $difficultySelector of document.querySelectorAll(".difficulty-selector")) {
+//         $difficultySelector.textContent = capitalizeFirstLetter($selector.textContent.toLowerCase());
+//     }
+//
+//     state.difficulty = $selector.textContent.toLowerCase();
+// }
+//
+// export function onChangePlayersPerTeam() {
+//     state.playersPerTeam = document.getElementById("players-per-team-selector").textContent.toLowerCase();
+// }
+//
+// export function onChangeTheme() {
+//     state.theme = document.getElementById("theme-selector").textContent.toLowerCase();
+// }
 
 export function onInputRange($rangeInput) {
     if($rangeInput.id === "master-volume-slider") {
@@ -211,12 +189,9 @@ export async function onClickCreateRoomBtn() {
 
     const $roomNameTxtInput = document.getElementById("create-room-name");
     const roomName = $roomNameTxtInput.value.trim();
-    const $teamSelector = document.getElementById("create-room-team-selector");
-    const team = $teamSelector.textContent.toLowerCase();
-    const $strikerSelector = document.getElementById("create-room-striker-selector");
-    const striker = parseInt($strikerSelector.dataset.value);
-    const $playerTypeSelector = document.getElementById("create-room-player-type-selector");
-    const playerType = $playerTypeSelector.textContent.toLowerCase();
+    const team = createRoomTeamSelector.getValue();
+    const striker = createRoomStrikerSelector.getValue();
+    const playerType = createRoomPlayerTypeSelector.getValue();
 
     startLoading();
     await createRoom(roomName, team, striker, playerType);
@@ -234,12 +209,9 @@ export async function onClickJoinRoomBtn() {
     }
 
     const roomName = $joinRoomItem.textContent.trim();
-    const $teamSelector = document.getElementById("join-room-team-selector");
-    const team = $teamSelector.textContent.toLowerCase();
-    const $strikerSelector = document.getElementById("join-room-striker-selector");
-    const striker = parseInt($strikerSelector.dataset.value);
-    const $playerTypeSelector = document.getElementById("join-room-player-type-selector");
-    const playerType = $playerTypeSelector.textContent.toLowerCase();
+    const team = joinRoomTeamSelector.getValue();
+    const striker = joinRoomStrikerSelector.getValue();
+    const playerType = joinRoomPlayerTypeSelector.getValue();
 
     startLoading();
     await joinRoom(roomName, team, striker, playerType);
@@ -288,25 +260,13 @@ export function onExit() {
 export function onMouseMove(event) {
     const offsetX = event.offsetX !== undefined ? event.offsetX : event.layerX;
     const offsetY = event.offsetY !== undefined ? event.offsetY : event.layerY;
-    // requestAnimationFrame(() => state.mainPlayer.updatePosByAcceleratingTo(offsetX, offsetY));
     state.pointingDevice.x = offsetX;
     state.pointingDevice.y = offsetY;
-}
-
-export function onArrowKeyDown(event) {
-    if(event.key !== "ArrowUp" && event.key !== "ArrowRight" && event.key !== "ArrowDown" && event.key !== "ArrowLeft") return;
-    state.pressedKeys[event.key] = true;
-}
-
-export function onArrowKeyUp(event) {
-    if(event.key !== "ArrowUp" && event.key !== "ArrowRight" && event.key !== "ArrowDown" && event.key !== "ArrowLeft") return;
-    state.pressedKeys[event.key] = false;
 }
 
 export function onTouchMove(event) {
     const offsetX = event.targetTouches[0].clientX - event.target.getBoundingClientRect().left;
     const offsetY = event.targetTouches[0].clientY - event.target.getBoundingClientRect().top;
-    // requestAnimationFrame(() => state.mainPlayer.updatePosByAcceleratingTo(offsetX, offsetY));
     state.pointingDevice.x = offsetX;
     state.pointingDevice.y = offsetY;
 }
@@ -317,15 +277,13 @@ export function onResize() {
 
 export function onClickJoinableRoom($roomItem) {
     const $currSelectedRoom = document.querySelector(".join-room-list > .join-room-item.selected");
-    const $teamSelector = document.getElementById("join-room-team-selector");
-    const $strikerSelector = document.getElementById("join-room-striker-selector");
 
     if ($currSelectedRoom !== null) $currSelectedRoom.classList.remove("selected");
     $roomItem.classList.add("selected");
 
-    $teamSelector.dataset.values = $roomItem.dataset.teams;
-    resetTextSelector($teamSelector);
+    joinRoomTeamSelector.updateSelectableValues($roomItem.dataset.teams.split(","));
 
-    $strikerSelector.dataset.values = $roomItem.dataset.strikers;
-    resetImgSelector($strikerSelector);
+    const strStrikerIdxArray = $roomItem.dataset.strikers.split(",");
+    const intStrikerIdxArray = strStrikerIdxArray.map(e => parseInt(e));
+    joinRoomStrikerSelector.updateSelectableValues(intStrikerIdxArray);
 }

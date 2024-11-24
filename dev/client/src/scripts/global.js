@@ -1,4 +1,6 @@
 import {isHandheldDevice} from "./util.js";
+import {TextSelector} from "./TextSelector.js";
+import {StrikerSelector} from "./StrikerSelector.js";
 
 // == Constants ==
 export const IS_DEV_MODE = true;
@@ -54,21 +56,12 @@ export const PLAYER_RADIUS_FRACTION = 0.0225 // TODO: make this ratio editable i
 export const PUCK_COLOR = "hsla(0, 0%, 100%, 1)";
 
 // config
-export const FPS = 60;
-export const MILLISECONDS_BTW_FRAMES = 1000 / FPS;
-export const X_PUCK_MAX_VEL_DIVIDEND = 3 * (FPS/60) * 16; // TODO: handle for non 16:9 aspect ratios
-export const Y_PUCK_MAX_VEL_DIVIDEND = 3 * (FPS/60) * 9; // TODO: handle for non 16:9 aspect ratios
 export const PUCK_MIN_SPEED = 1; // measured in px/frame
 export const PUCK_FRICTION = 0.999; // fraction of speed retained after deceleration caused by friction
 export const STRIKER_FRICTION = 0.999; // fraction of speed retained after deceleration caused by friction
-export const PUCK_COLLISION_ESCAPE_MULTIPLIER = 2.5;
-export const MAIN_PLAYER_VEL_MULTIPLIER = 2.5;
-export const MAIN_PLAYER_ACCEL = 1.5;
-export const AI_PLAYER_ACCEL = 2.5;
 export const STUCK_PUCK_MAX_DURATION = 10; // measured in seconds
 export const PUCK_PLAYER_COLLISION_COOLDOWN = 200; // measured in milliseconds
 export const TOAST_DURATION = 3000; // measured in milliseconds
-export const GAME_LOOP_INTERVAL_TIMEOUT = 1; // measured in milliseconds
 export const INITIAL_MASTER_GAIN = 1;
 export const INITIAL_MUSIC_GAIN = 0.9;
 export const INITIAL_FX_GAIN = 0.8;
@@ -80,10 +73,6 @@ export const validDifficulties = ["easy", "medium", "hard"];
 export const validPlayersPerTeam = ["one", "two"];
 export const validPlayerTypes = ["human", "ai", "remote"];
 export const selectablePlayerTypes = ["human", "ai"];
-export const validStrikerIndices = [];
-for(let i=0; i<MAX_USERS_PER_ROOM; i++) {
-    validStrikerIndices.push(i);
-}
 export const strikerImgUrls = [
     "images/striker-0.svg",
     "images/striker-1.svg",
@@ -160,6 +149,7 @@ export const state = {
         wasPuckOnLeftSide: false,
     },
     // gameplay
+    fps: 60, // frames per second
     isGoal: true,
     isPaused: false,
     isGameOver: true,
@@ -170,18 +160,20 @@ export const state = {
         x: 0,
         y: 0,
     },
-    pressedKeys: {
-        "ArrowUp": false,
-        "ArrowRight": false,
-        "ArrowDown": false,
-        "ArrowLeft": false,
-    },
-    strikerIdx: "0",
-    playerType: "human",
-    offlineTeam: "left", // applies to offline mode only
-    difficulty: "medium", // applies to offline mode only
-    playersPerTeam: "two", // applies to offline mode only
-    // theme: "dark",
     prevMasterGainValue: INITIAL_MASTER_GAIN,
     toastTimeoutId: -1,
 };
+
+// text selectors
+export const createRoomPlayerTypeSelector = new TextSelector("#create-room-player-type-selector", "human", selectablePlayerTypes);
+export const joinRoomPlayerTypeSelector = new TextSelector("#join-room-player-type-selector", "human", selectablePlayerTypes);
+export const offlineTeamSelector = new TextSelector("#offline-team-selector", "left", validTeams);
+export const createRoomTeamSelector = new TextSelector("#create-room-team-selector", "left", validTeams);
+export const joinRoomTeamSelector = new TextSelector("#join-room-team-selector", "left", validTeams);
+export const difficultySelector = new TextSelector(".difficulty-selector", "medium", validDifficulties);
+export const playersPerTeamSelector = new TextSelector(".players-per-team-selector", "two", validPlayersPerTeam);
+export const themeSelector = new TextSelector(".theme-selector", "dark", validThemes);
+
+// striker selectors
+export const createRoomStrikerSelector = new StrikerSelector("#create-room-striker-selector", 0);
+export const joinRoomStrikerSelector = new StrikerSelector("#join-room-striker-selector", 0);

@@ -1,32 +1,9 @@
-import {
-    $canvas,
-    $createRoomMenu, $homeMenu,
-    $joinRoomMenu,
-    $leftScore,
-    $message,
-    $onlineMenu,
-    $rightScore,
-    $scores,
-    domain,
-    IS_DEV_MODE,
-    MAX_ROOM_NAME_LENGTH,
-    MAX_USERNAME_LENGTH,
-    MAX_USERS_PER_ROOM,
-    state, WEBSOCKET_CLIENT_TIMEOUT, webSocketErrors
-} from "./global.js";
-import {
-    capitalizeFirstLetter,
-    clamp,
-    hide, hideAllMenus,
-    resetStrikerSelectorValues,
-    resetTeamSelectorValues, getSignificantFloatDigits, safeExtractScore,
-    setScore,
-    show,
-    showToast, retrieveFloatFromSignificantDigits
-} from "./util.js";
+import {$canvas, $createRoomMenu, $joinRoomMenu, $leftScore, $message, $onlineMenu, $rightScore, $scores, domain, IS_DEV_MODE, MAX_ROOM_NAME_LENGTH, MAX_USERNAME_LENGTH, MAX_USERS_PER_ROOM, state, WEBSOCKET_CLIENT_TIMEOUT, webSocketErrors} from "./global.js";
+import {capitalizeFirstLetter, hideAllMenus, getSignificantFloatDigits, safeExtractScore, setScore, show, showToast, retrieveFloatFromSignificantDigits} from "./util.js";
 import {onClickJoinableRoom, onPauseUsingDoubleClick, onPauseUsingKeyPress} from "./handlers.js";
 import Player from "./Player.js";
 import {exitGame, startNewRound} from "./game.js";
+import {playSound} from "./audio.js";
 
 export function connectUsingUserName() {
     return new Promise((resolve) => {
@@ -110,6 +87,7 @@ export function connectUsingUserName() {
 export function startOnlineGame(team, strikerIdx, playerType) {
     state.isOnlineGame = true;
     state.isPaused = false;
+    state.fps = 30;
 
     startConnectionTimeoutInterval();
 
@@ -298,7 +276,10 @@ export async function getRoomList() {
 
                 $room.dataset.strikers = room.availableStrikers.join(",");
 
-                $room.onclick = () => onClickJoinableRoom($room);
+                $room.onclick = () => {
+                    playSound("buttonPress", false);
+                    onClickJoinableRoom($room);
+                };
                 $joinRoomList.appendChild($room);
             }
         }
@@ -306,8 +287,8 @@ export async function getRoomList() {
         $errorMsg.textContent = "Something went wrong";
     }
 
-    resetTeamSelectorValues(document.getElementById("join-room-team-selector"));
-    resetStrikerSelectorValues(document.getElementById("join-room-striker-selector"));
+    // resetTeamSelectorValues(document.getElementById("join-room-team-selector"));
+    // resetStrikerSelectorValues(document.getElementById("join-room-striker-selector"));
 }
 
 export async function joinRoom(roomName, team, strikerIdx, playerType) {

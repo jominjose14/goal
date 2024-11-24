@@ -1,16 +1,6 @@
-import {
-    $canvas,
-    X_BOARD_RINK_FRACTION,
-    Y_BOARD_RINK_FRACTION,
-    state,
-    X_PUCK_MAX_VEL_DIVIDEND,
-    Y_PUCK_MAX_VEL_DIVIDEND,
-    PUCK_MIN_SPEED,
-    PUCK_RADIUS_FRACTION, STUCK_PUCK_MAX_DURATION, PUCK_PLAYER_COLLISION_COOLDOWN, PUCK_COLOR, PUCK_FRICTION, FPS,
-} from "./global.js";
-import {handleGoal, resetStuckPuckMetrics} from "./game.js";
+import {$canvas, state, PUCK_MIN_SPEED, PUCK_RADIUS_FRACTION, STUCK_PUCK_MAX_DURATION, PUCK_COLOR, PUCK_FRICTION} from "./global.js";
+import {resetStuckPuckMetrics} from "./game.js";
 import {clamp} from "./util.js";
-import {playSound} from "./audio.js";
 
 export default class Puck {
     #radius;
@@ -59,8 +49,8 @@ export default class Puck {
         if(isNaN(xVel)) return;
         const abs = Math.abs(xVel);
         if(abs < PUCK_MIN_SPEED) xVel = Math.sign(xVel) * PUCK_MIN_SPEED;
-        // this.#xVel = clamp(-$canvas.width/X_PUCK_MAX_VEL_DIVIDEND, xVel, $canvas.width/X_PUCK_MAX_VEL_DIVIDEND);
-        this.#xVel = Math.sign(xVel) * Math.min(abs, FPS/3);
+        const denominator = 3 * state.fps/60;
+        this.#xVel = Math.sign(xVel) * Math.min(abs, state.fps/denominator);
     }
 
     get yVel() {
@@ -71,8 +61,8 @@ export default class Puck {
         if(isNaN(yVel)) return;
         const abs = Math.abs(yVel);
         if(abs < PUCK_MIN_SPEED) yVel = Math.sign(yVel) * PUCK_MIN_SPEED;
-        // this.#yVel = clamp(-$canvas.height/Y_PUCK_MAX_VEL_DIVIDEND, yVel, $canvas.height/Y_PUCK_MAX_VEL_DIVIDEND);
-        this.#yVel = Math.sign(yVel) * Math.min(abs, FPS/3);
+        const denominator = 3 * state.fps/60;
+        this.#yVel = Math.sign(yVel) * Math.min(abs, state.fps/denominator);
     }
 
     resetRadius() {

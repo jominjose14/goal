@@ -1,13 +1,4 @@
-import {
-    $canvas,
-    $leftScore,
-    $loadingSpinner,
-    $toast,
-    validStrikerIndices,
-    validTeams,
-    state,
-    TOAST_DURATION, TRUNCATE_FLOAT_FACTOR
-} from "./global.js";
+import {$canvas, $loadingSpinner, $toast, state, TOAST_DURATION, TRUNCATE_FLOAT_FACTOR} from "./global.js";
 
 export function drawTextAtCanvasCenter(text) {
     const ctx = state.context;
@@ -127,26 +118,6 @@ export function strobeScore($score) {
     $score.classList.remove("strobing-score");
     void $score.offsetWidth; // hack to replay animation
     $score.classList.add("strobing-score");
-}
-
-export function resetTextSelector($selector) {
-    $selector.textContent = $selector.dataset.values.split(",").at(-1);
-    $selector.click();
-}
-
-export function resetImgSelector($selector) {
-    $selector.dataset.value = $selector.dataset.values.split(",").at(-1);
-    $selector.click();
-}
-
-export function resetTeamSelectorValues($teamSelector) {
-    $teamSelector.dataset.values = validTeams.join(",");
-    resetTextSelector($teamSelector);
-}
-
-export function resetStrikerSelectorValues($strikerSelector) {
-    $strikerSelector.dataset.values = validStrikerIndices.join(",");
-    resetImgSelector($strikerSelector);
 }
 
 export function closeModal($element) {

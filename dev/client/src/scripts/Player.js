@@ -1,21 +1,4 @@
-import {
-    $canvas,
-    X_BOARD_RINK_FRACTION,
-    Y_BOARD_RINK_FRACTION,
-    FPS,
-    MAIN_PLAYER_VEL_MULTIPLIER,
-    MAX_USERS_PER_ROOM,
-    PLAYER_RADIUS_FRACTION,
-    state,
-    strikers,
-    IS_DEV_MODE,
-    MAX_USERNAME_LENGTH,
-    validTeams,
-    validPlayerTypes,
-    validDifficulties,
-    MAIN_PLAYER_ACCEL, IS_HANDHELD_DEVICE, STRIKER_FRICTION
-} from "./global.js";
-
+import {$canvas, X_BOARD_RINK_FRACTION, Y_BOARD_RINK_FRACTION, MAX_USERS_PER_ROOM, PLAYER_RADIUS_FRACTION, state, strikers, IS_DEV_MODE, MAX_USERNAME_LENGTH, validTeams, validPlayerTypes, validDifficulties, STRIKER_FRICTION, difficultySelector} from "./global.js";
 import {clamp} from "./util.js";
 
 export default class Player {
@@ -30,7 +13,6 @@ export default class Player {
     #xVel = 0;
     #yVel = 0;
     #friction;
-    #timestampToMeasureVel = null;
     prevCollisionTimestamp = 0;
 
     constructor(name, strikerIdx, team, type) {
@@ -39,7 +21,7 @@ export default class Player {
         this.#strikerIdx = strikerIdx;
         this.#team = team;
         this.#type = type;
-        this.#intelligence = state.difficulty;
+        this.#intelligence = difficultySelector.getValue();
         this.#friction = STRIKER_FRICTION;
     }
 
@@ -147,8 +129,8 @@ export default class Player {
     set xVel(xVel) {
         if(isNaN(xVel)) return;
         const abs = Math.abs(xVel);
-        // this.#xVel = clamp(-$canvas.width, xVel, $canvas.width);
-        this.#xVel = Math.sign(xVel) * Math.min(abs, FPS/2);
+        const denominator = 2 * state.fps/60;
+        this.#xVel = Math.sign(xVel) * Math.min(abs, state.fps/denominator);
     }
 
     get yVel() {
@@ -158,8 +140,8 @@ export default class Player {
     set yVel(yVel) {
         if(isNaN(yVel)) return;
         const abs = Math.abs(yVel);
-        // this.#yVel = clamp(-$canvas.height, yVel, $canvas.height);
-        this.#yVel = Math.sign(yVel) * Math.min(abs, FPS/2);
+        const denominator = 2 * state.fps/60;
+        this.#yVel = Math.sign(yVel) * Math.min(abs, state.fps/denominator);
     }
 
     addToBoard() {
@@ -228,39 +210,6 @@ export default class Player {
         this.yPos += this.yVel;
     }
 
-    updatePosUsingKeys() {
-        for(const key of Object.keys(state.pressedKeys)) {
-            if(!state.pressedKeys[key]) continue;
-
-            switch(key) {
-                case "ArrowUp": this.yVel = Math.min(0, this.yVel - MAIN_PLAYER_ACCEL);
-                    break;
-
-                case "ArrowRight": this.xVel = Math.max(0, this.xVel + MAIN_PLAYER_ACCEL);
-                    break;
-
-                case "ArrowDown": this.yVel = Math.max(0, this.yVel + MAIN_PLAYER_ACCEL);
-                    break;
-
-                case "ArrowLeft": this.xVel = Math.min(0, this.xVel - MAIN_PLAYER_ACCEL);
-                    break;
-
-                default: console.error("Invalid arrow key");
-            }
-        }
-
-        this.xPos += this.xVel;
-        this.yPos += this.yVel;
-    }
-
-    updateVelUsingJoyStick(x, y) {
-        const xAccel = MAIN_PLAYER_ACCEL * x;
-        const yAccel = MAIN_PLAYER_ACCEL * y;
-
-        this.xVel += xAccel;
-        this.yVel += yAccel;
-    }
-
     easyAiUpdate() {
         // wait for a human player to make first move
         if(state.puck.xPos === $canvas.width/2 && state.puck.yPos === $canvas.height/2) return;
@@ -286,7 +235,7 @@ export default class Player {
         this.xPos = this.#team === "right" ? 0.9 * $canvas.width : 0.1 * $canvas.width;
         this.yPos += this.yVel;
 
-        const thresholdReplySpeed = 10 * 60/FPS;
+        const thresholdReplySpeed = 10 * 60/state.fps;
         this.xVel = (this.team === "right" ? -1 : 1) * Math.max(thresholdReplySpeed, Math.abs(this.xVel));
         // this.yVel = (state.puck.yPos < this.yPos ? -1 : 1) * Math.max(thresholdReplySpeed, Math.abs(this.yVel));
     }
@@ -298,7 +247,7 @@ export default class Player {
         const isPuckOnOpponentSide = this.#team === "right" && state.puck.xPos + state.puck.radius < $canvas.width/2 || this.#team === "left" && $canvas.width/2 < state.puck.xPos + state.puck.radius;
         const isPuckBtwStrikerAndGoal = this.#team === "right" && this.xPos < state.puck.xPos || this.#team === "left" && state.puck.xPos < this.xPos;
         const isPuckMovingAwayFromGoal = this.#team === "right" && Math.sign(state.puck.xVel) === -1 || this.#team === "left" && Math.sign(state.puck.xVel) === 1;
-        const thresholdReplySpeed = 10 * FPS/60;
+        const thresholdReplySpeed = 10 * state.fps/60;
 
         if(isPuckOnOpponentSide || isPuckBtwStrikerAndGoal) {
             const multiplier = isPuckOnOpponentSide ? 0.05 : 0.1;
@@ -354,8 +303,8 @@ export default class Player {
 
         this.updatePosByAcceleratingTo(x, y);
 
-        this.xVel = (this.team === "right" ? -1 : 1) * Math.max(10 * 60/FPS, Math.abs(this.xVel));
-        this.yVel = (state.puck.yPos < this.yPos ? -1 : 1) * Math.max(10 * 60/FPS, Math.abs(this.yVel));
+        this.xVel = (this.team === "right" ? -1 : 1) * Math.max(10 * 60/state.fps, Math.abs(this.xVel));
+        this.yVel = (state.puck.yPos < this.yPos ? -1 : 1) * Math.max(10 * 60/state.fps, Math.abs(this.yVel));
     }
 
     update() {
@@ -385,7 +334,6 @@ export default class Player {
             this.updatePosByAcceleratingTo(state.pointingDevice.x, state.pointingDevice.y);
         }
 
-        // mainPlayer is updated by updatePosByAcceleratingTo()
         // player of type="remote" is updated using payload received via web socket connection
 
         this.draw();

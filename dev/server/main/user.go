@@ -8,11 +8,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const (
-	maxUserNameLength = 10
-	maxUserCount      = maxRoomCount * maxUsersPerRoom
-)
-
 type user struct {
 	name    string
 	conn    *websocket.Conn

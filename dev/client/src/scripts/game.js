@@ -1,19 +1,5 @@
 import Player from "./Player.js";
-import {
-    $canvas,
-    $homeMenu,
-    $leftScore,
-    $message,
-    $offlineMenu,
-    $pauseMenu,
-    $rightScore,
-    $scores,
-    FPS, GAME_LOOP_INTERVAL_TIMEOUT,
-    IS_DEV_MODE,
-    MILLISECONDS_BTW_FRAMES, PUCK_PLAYER_COLLISION_COOLDOWN,
-    state,
-    X_BOARD_RINK_FRACTION, Y_BOARD_RINK_FRACTION, Y_GOAL_END_FRACTION, Y_GOAL_START_FRACTION,
-} from "./global.js";
+import {$canvas, $homeMenu, $leftScore, $message, $pauseMenu, $rightScore, $scores, difficultySelector, IS_DEV_MODE, offlineTeamSelector, playersPerTeamSelector, PUCK_PLAYER_COLLISION_COOLDOWN, state, X_BOARD_RINK_FRACTION, Y_BOARD_RINK_FRACTION, Y_GOAL_END_FRACTION, Y_GOAL_START_FRACTION} from "./global.js";
 import {closeModal, drawTextAtCanvasCenter, hide, hideAllMenus, incrementScore, show, showToast} from "./util.js";
 import {resetPostDisconnect, sendRemoteState} from "./online.js";
 import {onPauseUsingDoubleClick, onPauseUsingKeyPress} from "./handlers.js";
@@ -29,12 +15,13 @@ function loop() {
     let shouldLoop = !state.isGameOver && (state.isOnlineGame || !state.isPaused);
     if(!shouldLoop) return;
 
+    const millisecondsBtwFrames = 1000 / state.fps;
     const now = window.performance.now();
     const timeElapsedSincePrevFrame = now - state.fpsMetrics.prevFrameTimestamp;
 
-    if(MILLISECONDS_BTW_FRAMES <= timeElapsedSincePrevFrame) {
+    if(millisecondsBtwFrames <= timeElapsedSincePrevFrame) {
         // if we reach here, we are rendering a new frame
-        state.fpsMetrics.prevFrameTimestamp = now - timeElapsedSincePrevFrame % MILLISECONDS_BTW_FRAMES; // the modulo op is an adjustment in case millisecondsBetweenFrames is not a multiple of screen's built-in millisecondsBetweenFrames (for 60Hz it is 1000/60 = 16.7ms)
+        state.fpsMetrics.prevFrameTimestamp = now - timeElapsedSincePrevFrame % millisecondsBtwFrames; // the modulo op is an adjustment in case millisecondsBetweenFrames is not a multiple of screen's built-in millisecondsBetweenFrames (for 60Hz it is 1000/60 = 16.7ms)
 
         // clear canvas
         state.context.clearRect(0, 0, $canvas.width, $canvas.height);
@@ -57,7 +44,7 @@ function loop() {
         }
     } // else, skip frame
 
-    // activities performed at frequency higher than FPS
+    // activities performed at frequency higher than fps
     if(!state.isGoal) updateStuckPuckMetrics();
     handleCollisions();
 
@@ -115,6 +102,7 @@ function logForDebug() {
 export function startOfflineGame() {
     state.isOnlineGame = false;
     state.isPaused = false;
+    state.fps = 60;
 
     hideAllMenus();
     show($canvas);
@@ -124,18 +112,20 @@ export function startOfflineGame() {
     document.addEventListener("keypress", event => onPauseUsingKeyPress(event));
     document.addEventListener("dblclick", onPauseUsingDoubleClick);
 
-    state.mainPlayer.team = state.offlineTeam.toLowerCase();
+    state.mainPlayer.team = offlineTeamSelector.getValue();
     state.mainPlayer.reset();
 
-    const mainPlayerTeam = state.offlineTeam.toLowerCase();
+    const mainPlayerTeam = offlineTeamSelector.getValue();
     const opponentTeam = mainPlayerTeam === "left" ? "right" : "left";
+    const difficulty = difficultySelector.getValue();
+    const playersPerTeam = playersPerTeamSelector.getValue();
 
-    if(state.playersPerTeam === "one") {
+    if(playersPerTeam === "one") {
         const aiOpponent = new Player("Tom", 1, opponentTeam, "ai");
         aiOpponent.reset();
         aiOpponent.addToBoard();
-        aiOpponent.intelligence = state.difficulty;
-    } else if(state.playersPerTeam === "two") {
+        aiOpponent.intelligence = difficulty;
+    } else if(playersPerTeam === "two") {
         const aiTeamMate = new Player("Tom", 1, mainPlayerTeam, "ai");
         aiTeamMate.reset();
         aiTeamMate.addToBoard();
@@ -148,15 +138,15 @@ export function startOfflineGame() {
         aiOpponentTwo.reset();
         aiOpponentTwo.addToBoard();
 
-        if(state.difficulty === "easy") {
+        if(difficulty === "easy") {
             aiTeamMate.intelligence = "medium";
             aiOpponentOne.intelligence = "easy";
             aiOpponentTwo.intelligence = "medium";
-        } else if(state.difficulty === "medium") {
+        } else if(difficulty === "medium") {
             aiTeamMate.intelligence = "easy";
             aiOpponentOne.intelligence = "easy";
             aiOpponentTwo.intelligence = "medium";
-        } else if(state.difficulty === "hard") {
+        } else if(difficulty === "hard") {
             aiTeamMate.intelligence = "easy";
             aiOpponentOne.intelligence = "medium";
             aiOpponentTwo.intelligence = "hard";
@@ -291,7 +281,7 @@ export function handlePuckPlayerCollisions() {
 }
 
 export function handleGoal() {
-    const xGoalThresholdSpeed = 7 * FPS/60;
+    const xGoalThresholdSpeed = 7 * state.fps/60;
     state.puck.xVel = Math.sign(state.puck.xVel) * Math.max(xGoalThresholdSpeed, state.puck.xVel);
     state.puck.yVel = 0;
 
@@ -379,6 +369,7 @@ export function exitGame() {
 
     // reset
     state.isGameOver = true;
+    state.fps = 60;
     state.players = [state.mainPlayer];
 
     state.mainPlayer.name = "You";

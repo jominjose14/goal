@@ -1,58 +1,10 @@
-import {
-    $canvas,
-    $createRoomMenu,
-    $fullscreenToggles,
-    $sfxVolumeSlider,
-    $homeMenu,
-    $joinRoomMenu,
-    $masterVolumeSlider,
-    $musicVolumeSlider,
-    $muteToggles,
-    $offlineMenu,
-    $onlineMenu,
-    $pauseMenu,
-    INITIAL_FX_GAIN,
-    INITIAL_MASTER_GAIN,
-    INITIAL_MUSIC_GAIN,
-    IS_DEV_MODE,
-    state,
-    validThemes,
-    validDifficulties,
-    validStrikerIndices,
-    validTeams,
-    validPlayersPerTeam,
-    $fpsDisplay,
-    IS_HANDHELD_DEVICE, selectablePlayerTypes,
-} from "./scripts/global.js";
+import {$canvas, $createRoomMenu, $fullscreenToggles, $sfxVolumeSlider, $homeMenu, $joinRoomMenu, $masterVolumeSlider, $musicVolumeSlider, $muteToggles, $offlineMenu, $onlineMenu, $pauseMenu, INITIAL_FX_GAIN, INITIAL_MASTER_GAIN, INITIAL_MUSIC_GAIN, IS_DEV_MODE, state, $fpsDisplay, IS_HANDHELD_DEVICE, offlineTeamSelector} from "./scripts/global.js";
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {resizeBoard, startOfflineGame} from "./scripts/game.js";
-import {capitalizeFirstLetter, show, startLoading, stopLoading} from "./scripts/util.js";
+import {show, startLoading, stopLoading} from "./scripts/util.js";
 import {getRoomList} from "./scripts/online.js";
-import {
-    onChangeDifficulty,
-    onChangeOfflineTeam,
-    onChangeOrientation,
-    onChangePlayersPerTeam,
-    onChangeStriker,
-    onChangeTheme,
-    onClickCreateRoomBtn,
-    onClickCreateRoomMenuBtn,
-    onClickHomeBtn,
-    onClickJoinRoomBtn,
-    onClickJoinRoomMenuBtn,
-    onClickOfflineGameBtn,
-    onClickOnlineGameBtn,
-    onClickSettingsBtn, onExit,
-    onImgSelectorClick, onInputRange,
-    onMouseMove,
-    onResize,
-    onResume,
-    onSelectorClick,
-    onToggleFullscreen,
-    onToggleMute,
-    onTouchMove, playBgm
-} from "./scripts/handlers.js";
+import {onChangeOrientation, onClickCreateRoomBtn, onClickCreateRoomMenuBtn, onClickHomeBtn, onClickJoinRoomBtn, onClickJoinRoomMenuBtn, onClickOfflineGameBtn, onClickOnlineGameBtn, onClickSettingsBtn, onExit, onInputRange, onMouseMove, onResize, onResume, onToggleFullscreen, onToggleMute, onTouchMove, playBgm} from "./scripts/handlers.js";
 import {loadSounds, playSound} from "./scripts/audio.js";
 
 main();
@@ -63,7 +15,7 @@ function main() {
     attachEventListeners();
     initializeParameters();
 
-    state.mainPlayer = new Player("You", 0, state.offlineTeam, "human");
+    state.mainPlayer = new Player("You", 0, offlineTeamSelector.getValue(), "human");
     state.mainPlayer.reset();
     state.mainPlayer.addToBoard();
 
@@ -73,8 +25,6 @@ function main() {
         $canvas.addEventListener("touchmove", event => onTouchMove(event));
     } else {
         $canvas.addEventListener("mousemove", event => onMouseMove(event));
-        // window.addEventListener("keydown", event => onArrowKeyDown(event));
-        // window.addEventListener("keyup", event => onArrowKeyUp(event));
     }
 
     window.addEventListener("resize", onResize);
@@ -93,36 +43,6 @@ function debugOps() {
 }
 
 function initializeParameters() {
-    // for(const $themeSelector of document.querySelectorAll(".theme-selector")) {
-    //     $themeSelector.textContent = capitalizeFirstLetter(state.theme);
-    //     $themeSelector.dataset.values = validThemes.join(",");
-    // }
-
-    for(const $teamSelector of document.querySelectorAll(".team-selector")) {
-        $teamSelector.textContent = capitalizeFirstLetter(state.offlineTeam);
-        $teamSelector.dataset.values = validTeams.join(",");
-    }
-
-    for(const $difficultySelector of document.querySelectorAll(".difficulty-selector")) {
-        $difficultySelector.textContent = capitalizeFirstLetter(state.difficulty);
-        $difficultySelector.dataset.values = validDifficulties.join(",");
-    }
-
-    for(const $strikerSelector of document.querySelectorAll(".striker-selector")) {
-        $strikerSelector.dataset.value = state.strikerIdx;
-        $strikerSelector.dataset.values = validStrikerIndices.join(",");
-    }
-
-    for(const $playersPerTeamSelector of document.querySelectorAll(".players-per-team-selector")) {
-        $playersPerTeamSelector.textContent = capitalizeFirstLetter(state.playersPerTeam);
-        $playersPerTeamSelector.dataset.values = validPlayersPerTeam.join(",");
-    }
-
-    for(const $playerTypeSelector of document.querySelectorAll(".player-type-selector")) {
-        $playerTypeSelector.textContent = capitalizeFirstLetter(state.playerType);
-        $playerTypeSelector.dataset.values = selectablePlayerTypes.join(",");
-    }
-
     $masterVolumeSlider.value = INITIAL_MASTER_GAIN * 100;
     $musicVolumeSlider.value = INITIAL_MUSIC_GAIN * 100;
     $sfxVolumeSlider.value = INITIAL_FX_GAIN * 100;
@@ -159,34 +79,6 @@ function attachEventListeners() {
 
     for(const $backBtn of document.querySelectorAll(".menu .home-btn")) {
         $backBtn.onclick = (event) => onClickHomeBtn(event.target);
-    }
-
-    for(const $selector of document.querySelectorAll(".menu .selector")) {
-        $selector.addEventListener("click", (event) => {
-            onSelectorClick(event.target);
-
-            if(event.target.id === "offline-team-selector") {
-                onChangeOfflineTeam();
-            } else if(event.target.classList.contains("difficulty-selector")) {
-                onChangeDifficulty(event.target);
-            } else if(event.target.id === "players-per-team-selector") {
-                onChangePlayersPerTeam();
-            } else if(event.target.id === "theme-selector") {
-                onChangeTheme();
-            }
-
-            event.target.textContent = capitalizeFirstLetter(event.target.textContent);
-        });
-    }
-
-    for(const $imgSelector of document.querySelectorAll(".img-selector")) {
-        $imgSelector.addEventListener("click", (event) => {
-            const $imgSelector = event.target.closest(".img-selector");
-            onImgSelectorClick($imgSelector);
-            if($imgSelector.id === "create-room-striker-selector" || $imgSelector.id === "join-room-striker-selector") {
-                onChangeStriker($imgSelector);
-            }
-        });
     }
 
     $masterVolumeSlider.oninput = () => onInputRange($masterVolumeSlider);

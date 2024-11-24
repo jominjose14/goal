@@ -1,11 +1,3 @@
-import {
-    $canvas,
-    MAIN_PLAYER_VEL_MULTIPLIER,
-    X_BOARD_RINK_FRACTION,
-    Y_BOARD_RINK_FRACTION
-} from "../../client/src/scripts/global";
-import {clamp} from "../../client/src/scripts/util";
-
 class Player {
     updatePosViaUserInput(x, y) {
         if(this.#team === "left") {
@@ -38,6 +30,39 @@ class Player {
         this.#timestampToMeasureVel = Date.now();
         this.xPos = x;
         this.yPos = y;
+    }
+
+    updatePosUsingKeys() {
+        for(const key of Object.keys(state.pressedKeys)) {
+            if(!state.pressedKeys[key]) continue;
+
+            switch(key) {
+                case "ArrowUp": this.yVel = Math.min(0, this.yVel - MAIN_PLAYER_ACCEL);
+                    break;
+
+                case "ArrowRight": this.xVel = Math.max(0, this.xVel + MAIN_PLAYER_ACCEL);
+                    break;
+
+                case "ArrowDown": this.yVel = Math.max(0, this.yVel + MAIN_PLAYER_ACCEL);
+                    break;
+
+                case "ArrowLeft": this.xVel = Math.min(0, this.xVel - MAIN_PLAYER_ACCEL);
+                    break;
+
+                default: console.error("Invalid arrow key");
+            }
+        }
+
+        this.xPos += this.xVel;
+        this.yPos += this.yVel;
+    }
+
+    updateVelUsingJoyStick(x, y) {
+        const xAccel = MAIN_PLAYER_ACCEL * x;
+        const yAccel = MAIN_PLAYER_ACCEL * y;
+
+        this.xVel += xAccel;
+        this.yVel += yAccel;
     }
 
     onAiCollideWithBounds() {

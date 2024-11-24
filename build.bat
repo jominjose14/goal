@@ -3,9 +3,9 @@ cd dev\client
 call npm install
 call npm run build
 
+echo.
 echo [INFO] Building server
 cd ..\server
-.\build-server.bat
+call .\build-server.bat
 
-echo.
 echo [INFO] Build process complete
