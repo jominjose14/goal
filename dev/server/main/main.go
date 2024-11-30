@@ -30,13 +30,16 @@ func main() {
 	// route handlers
 	publicPath := filepath.Join(serverDir, "public")
 	fileServer := http.FileServer(http.Dir(publicPath))
-	http.Handle("GET /public/", http.StripPrefix("/public/", fileServer))
+	publicHandler := http.StripPrefix("/public/", fileServer)
+	http.Handle("GET /public/", middlewareChain(func(writer http.ResponseWriter, req *http.Request) {
+		publicHandler.ServeHTTP(writer, req)
+	}))
 
-	http.HandleFunc("GET /", rootHandler)
-	http.HandleFunc("GET /user", createUserHandler)
-	http.HandleFunc("GET /rooms", listRoomsHandler)
-	http.HandleFunc("POST /room", createRoomHandler)
-	http.HandleFunc("POST /join", joinRoomHandler)
+	http.HandleFunc("GET /", middlewareChain(rootHandler))
+	http.HandleFunc("GET /user", middlewareChain(createUserHandler))
+	http.HandleFunc("GET /rooms", middlewareChain(listRoomsHandler))
+	http.HandleFunc("POST /room", middlewareChain(createRoomHandler))
+	http.HandleFunc("POST /join", middlewareChain(joinRoomHandler))
 
 	// serve
 	port := 8080

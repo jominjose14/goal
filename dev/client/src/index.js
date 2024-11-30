@@ -1,4 +1,4 @@
-import {$canvas, $createRoomMenu, $fullscreenToggles, $sfxVolumeSlider, $homeMenu, $joinRoomMenu, $masterVolumeSlider, $musicVolumeSlider, $muteToggles, $offlineMenu, $onlineMenu, $pauseMenu, INITIAL_FX_GAIN, INITIAL_MASTER_GAIN, INITIAL_MUSIC_GAIN, IS_DEV_MODE, state, $fpsDisplay, IS_HANDHELD_DEVICE, offlineTeamSelector} from "./scripts/global.js";
+import {$canvas, $createRoomMenu, $fullscreenToggles, $sfxVolumeSlider, $homeMenu, $joinRoomMenu, $masterVolumeSlider, $musicVolumeSlider, $muteToggles, $offlineMenu, $onlineMenu, $pauseMenu, INITIAL_FX_GAIN, INITIAL_MASTER_GAIN, INITIAL_MUSIC_GAIN, IS_DEV_MODE, state, $fpsDisplay, IS_HANDHELD_DEVICE, offlineTeamSelector, $loadingSpinner} from "./scripts/global.js";
 import Puck from "./scripts/Puck.js";
 import Player from "./scripts/Player.js";
 import {resizeBoard, startOfflineGame} from "./scripts/game.js";
@@ -6,12 +6,14 @@ import {show, startLoading, stopLoading} from "./scripts/util.js";
 import {getRoomList} from "./scripts/online.js";
 import {onChangeOrientation, onClickCreateRoomBtn, onClickCreateRoomMenuBtn, onClickHomeBtn, onClickJoinRoomBtn, onClickJoinRoomMenuBtn, onClickOfflineGameBtn, onClickOnlineGameBtn, onClickSettingsBtn, onExit, onInputRange, onMouseMove, onResize, onResume, onToggleFullscreen, onToggleMute, onTouchMove, playBgm} from "./scripts/handlers.js";
 import {loadSounds, playSound} from "./scripts/audio.js";
+import {populateSvgs} from "./scripts/svg.js";
 
-main();
+document.addEventListener("DOMContentLoaded", main);
 
 function main() {
     loadSounds();
     onChangeOrientation();
+    populateSvgs();
     attachEventListeners();
     initializeParameters();
 
@@ -31,6 +33,9 @@ function main() {
 
     resizeBoard();
     if(IS_DEV_MODE) debugOps();
+
+    $loadingSpinner.classList.remove("opaque-loading-spinner");
+    stopLoading();
 }
 
 function debugOps() {

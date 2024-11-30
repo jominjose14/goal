@@ -1,4 +1,4 @@
-import {$canvas, $createRoomMenu, $joinRoomMenu, $leftScore, $message, $onlineMenu, $rightScore, $scores, domain, IS_DEV_MODE, MAX_ROOM_NAME_LENGTH, MAX_USERNAME_LENGTH, MAX_USERS_PER_ROOM, state, WEBSOCKET_CLIENT_TIMEOUT, webSocketErrors} from "./global.js";
+import {$canvas, $createRoomMenu, $joinRoomMenu, $leftScore, $message, $onlineMenu, $rightScore, $scores, domain, IS_DEV_MODE, MAX_ROOM_NAME_LENGTH, MAX_USERNAME_LENGTH, MAX_USERS_PER_ROOM, ONLINE_FPS, state, WEBSOCKET_CLIENT_TIMEOUT, webSocketErrors} from "./global.js";
 import {capitalizeFirstLetter, hideAllMenus, getSignificantFloatDigits, safeExtractScore, setScore, show, showToast, retrieveFloatFromSignificantDigits} from "./util.js";
 import {onClickJoinableRoom, onPauseUsingDoubleClick, onPauseUsingKeyPress} from "./handlers.js";
 import Player from "./Player.js";
@@ -66,7 +66,7 @@ export function connectUsingUserName() {
         if (state.webSocketConn !== null) state.webSocketConn.onerror = () => {
             if (IS_DEV_MODE) console.error("Error during web socket communication");
             $errorMsg.textContent = "Error while communicating with server";
-            state.webSocketConn.close(1002);
+            state.webSocketConn.close(webSocketErrors.clientError.code, webSocketErrors.clientError.reason);
         }
 
         if (state.webSocketConn !== null) state.webSocketConn.onclose = () => {
@@ -87,7 +87,7 @@ export function connectUsingUserName() {
 export function startOnlineGame(team, strikerIdx, playerType) {
     state.isOnlineGame = true;
     state.isPaused = false;
-    state.fps = 30;
+    state.fps = ONLINE_FPS;
 
     startConnectionTimeoutInterval();
 
@@ -137,7 +137,7 @@ export function startOnlineGame(team, strikerIdx, playerType) {
 
                 let found = false;
                 for (const player of state.players) {
-                    if (player.name !== payload.userName || player === state.mainPlayer) continue;
+                    if(player.name !== payload.userName || player === state.mainPlayer) continue;
 
                     found = true;
 
@@ -178,7 +178,7 @@ export function startOnlineGame(team, strikerIdx, playerType) {
 
     state.webSocketConn.onerror = (error) => {
         if (IS_DEV_MODE) console.error("Error during web socket communication. Reason: ", error);
-        state.webSocketConn.close(1002);
+        state.webSocketConn.close(webSocketErrors.clientError.code, webSocketErrors.clientError.reason);
     };
 
     state.webSocketConn.onclose = () => {

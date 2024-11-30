@@ -32,7 +32,7 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 	conn, err := upgrader.Upgrade(writer, req, nil)
 	if err != nil {
 		log.Println("[ERROR] error upgrading to websocket:", err)
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		http.Error(writer, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
 
@@ -131,6 +131,11 @@ func createUserHandler(writer http.ResponseWriter, req *http.Request) {
 
 	// start receiving state from user
 	for {
+		if isGloballyMemoryLimited() {
+			log.Printf("[ERROR] globally memory-limited while reading web socket messages of user %s\n", currUser.name)
+			return
+		}
+
 		var newState state
 		err := conn.ReadJSON(&newState)
 		if err != nil {
@@ -162,19 +167,22 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	req.Body = http.MaxBytesReader(writer, req.Body, maxPayloadSize)
 	decoder := json.NewDecoder(req.Body)
+	decoder.DisallowUnknownFields()
 	var payload roomPayload
+
 	err := decoder.Decode(&payload)
 	if err != nil {
 		log.Println("[ERROR]", err)
-		http.Error(writer, err.Error(), http.StatusBadRequest)
+		http.Error(writer, "Something went wrong", http.StatusBadRequest)
 		return
 	}
 
 	if payload.RoomName == "" || payload.UserName == "" || payload.Team == "" {
 		err := errors.New("invalid create room request since fields missing in payload")
 		log.Println("[ERROR]", err)
-		http.Error(writer, err.Error(), http.StatusBadRequest)
+		http.Error(writer, "Something went wrong", http.StatusBadRequest)
 		return
 	}
 
@@ -224,19 +232,22 @@ func createRoomHandler(writer http.ResponseWriter, req *http.Request) {
 }
 
 func joinRoomHandler(writer http.ResponseWriter, req *http.Request) {
+	req.Body = http.MaxBytesReader(writer, req.Body, maxPayloadSize)
 	decoder := json.NewDecoder(req.Body)
+	decoder.DisallowUnknownFields()
 	var payload roomPayload
+
 	err := decoder.Decode(&payload)
 	if err != nil {
 		log.Println("[ERROR]", err)
-		http.Error(writer, err.Error(), http.StatusBadRequest)
+		http.Error(writer, "Something went wrong", http.StatusBadRequest)
 		return
 	}
 
 	if payload.RoomName == "" || payload.UserName == "" || payload.Team == "" {
 		err := errors.New("invalid join room request since fields missing in payload")
 		log.Println("[ERROR]", err)
-		http.Error(writer, err.Error(), http.StatusBadRequest)
+		http.Error(writer, "Something went wrong", http.StatusBadRequest)
 		return
 	}
 

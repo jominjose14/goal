@@ -1,8 +1,9 @@
-import {$createRoomMenu, $fullscreenToggles, $homeMenu, $joinRoomMenu, $masterVolumeSlider, $muteToggles, $offlineMenu, $onlineMenu, $pauseMenu, $rotateScreenPopup, $settingsMenu, createRoomPlayerTypeSelector, createRoomStrikerSelector, createRoomTeamSelector, joinRoomPlayerTypeSelector, joinRoomStrikerSelector, joinRoomTeamSelector, state, strikerImgUrls} from "./global.js";
+import {$createRoomMenu, $fullscreenToggles, $homeMenu, $joinRoomMenu, $masterVolumeSlider, $muteToggles, $offlineMenu, $onlineMenu, $pauseMenu, $rotateScreenPopup, $settingsMenu, createRoomPlayerTypeSelector, createRoomStrikerSelector, createRoomTeamSelector, joinRoomPlayerTypeSelector, joinRoomStrikerSelector, joinRoomTeamSelector, state} from "./global.js";
 import {clamp, closeModal, hide, show, startLoading, stopLoading} from "./util.js";
 import {connectUsingUserName, createRoom, getRoomList, joinRoom, resetPostDisconnect} from "./online.js";
 import {exitGame, resizeBoard, startGameLoop} from "./game.js";
 import {fxGain, masterGain, musicGain, playSound} from "./audio.js";
+import {getSvg} from "./svg.js";
 
 export function onClickOnlineGameBtn() {
     hide($homeMenu);
@@ -23,14 +24,16 @@ export function playBgm() {
 
 export function onToggleMute() {
     for (const $muteToggle of $muteToggles) {
-        const $img = $muteToggle.querySelector("img");
+        const $svg = $muteToggle.querySelector("svg");
 
-        if ($img.src.includes("unmuted")) {
-            $img.src = $img.src.replace("unmuted.svg", "muted.svg");
+        if ($svg.dataset.type === "unmuted") {
+            $muteToggle.innerHTML = "";
+            $muteToggle.appendChild(getSvg("muted"));
             $masterVolumeSlider.disabled = true;
             $masterVolumeSlider.style.cursor = "not-allowed";
-        } else {
-            $img.src = $img.src.replace("muted.svg", "unmuted.svg");
+        } else if($svg.dataset.type === "muted") {
+            $muteToggle.innerHTML = "";
+            $muteToggle.appendChild(getSvg("unmuted"));
             $masterVolumeSlider.disabled = false;
             $masterVolumeSlider.style.cursor = "grab";
         }
@@ -39,18 +42,16 @@ export function onToggleMute() {
     const currGainValue = masterGain.gain.value;
     masterGain.gain.value = masterGain.gain.value === 0 ? state.prevMasterGainValue : 0;
     state.prevMasterGainValue = currGainValue;
-
-    // $masterVolumeSlider.value = masterGain.gain.value;
 }
 
 export function onToggleFullscreen() {
     for (const $fullscreenToggle of $fullscreenToggles) {
-        const $img = $fullscreenToggle.querySelector("img");
-
         if (!document.fullscreenElement) {
-            $img.src = $img.src.replace("fullscreen.svg", "windowed.svg");
+            $fullscreenToggle.innerHTML = "";
+            $fullscreenToggle.appendChild(getSvg("windowed"));
         } else if (document.exitFullscreen) {
-            $img.src = $img.src.replace("windowed.svg", "fullscreen.svg");
+            $fullscreenToggle.innerHTML = "";
+            $fullscreenToggle.appendChild(getSvg("fullscreen"));
         }
     }
 
@@ -77,30 +78,6 @@ export function onClickHomeBtn($element) {
     show($homeMenu);
 }
 
-// export function onSelectorClick($element) {
-//     const values = $element.dataset.values.split(",");
-//     const currValue = $element.textContent.trim().toLowerCase();
-//
-//     for (let i = 0; i < values.length; i++) {
-//         if (values[i] === currValue) {
-//             $element.textContent = capitalizeFirstLetter(values[(i + 1) % values.length]);
-//             break;
-//         }
-//     }
-// }
-//
-// export function onImgSelectorClick($imgSelector) {
-//     const values = $imgSelector.dataset.values.split(",");
-//     const currValue = $imgSelector.dataset.value;
-//
-//     for (let i = 0; i < values.length; i++) {
-//         if (values[i] === currValue) {
-//             $imgSelector.dataset.value = values[(i + 1) % values.length];
-//             break;
-//         }
-//     }
-// }
-
 export function onChangeOrientation(event) {
     if (event === undefined && window.innerWidth < window.innerHeight || event !== undefined && event.target.type.includes("portrait")) {
         // portrait orientation: show popup that asks user to rotate screen, do not allow user to play game
@@ -114,26 +91,6 @@ export function onChangeOrientation(event) {
     }
 }
 
-// export function onChangeOfflineTeam() {
-//     state.offlineTeam = document.getElementById("offline-team-selector").textContent.toLowerCase();
-// }
-//
-// export function onChangeDifficulty($selector) {
-//     for(const $difficultySelector of document.querySelectorAll(".difficulty-selector")) {
-//         $difficultySelector.textContent = capitalizeFirstLetter($selector.textContent.toLowerCase());
-//     }
-//
-//     state.difficulty = $selector.textContent.toLowerCase();
-// }
-//
-// export function onChangePlayersPerTeam() {
-//     state.playersPerTeam = document.getElementById("players-per-team-selector").textContent.toLowerCase();
-// }
-//
-// export function onChangeTheme() {
-//     state.theme = document.getElementById("theme-selector").textContent.toLowerCase();
-// }
-
 export function onInputRange($rangeInput) {
     if($rangeInput.id === "master-volume-slider") {
         // if(masterGain.gain.value === 0 && 0 < $rangeInput.value) onToggleMute();
@@ -144,11 +101,6 @@ export function onInputRange($rangeInput) {
     } else if($rangeInput.id === "sfx-volume-slider") {
         fxGain.gain.value = clamp(0, $rangeInput.value / 100, 1);
     }
-}
-
-export function onChangeStriker($imgSelector) {
-    const $img = $imgSelector.querySelector("img");
-    $img.src = strikerImgUrls[parseInt($imgSelector.dataset.value)];
 }
 
 export async function onClickCreateRoomMenuBtn() {

@@ -1,4 +1,20 @@
-import {$canvas, X_BOARD_RINK_FRACTION, Y_BOARD_RINK_FRACTION, MAX_USERS_PER_ROOM, PLAYER_RADIUS_FRACTION, state, strikers, IS_DEV_MODE, MAX_USERNAME_LENGTH, validTeams, validPlayerTypes, validDifficulties, STRIKER_FRICTION, difficultySelector} from "./global.js";
+import {
+    $canvas,
+    X_BOARD_RINK_FRACTION,
+    Y_BOARD_RINK_FRACTION,
+    MAX_USERS_PER_ROOM,
+    PLAYER_RADIUS_FRACTION,
+    state,
+    strikers,
+    IS_DEV_MODE,
+    MAX_USERNAME_LENGTH,
+    validTeams,
+    validPlayerTypes,
+    validDifficulties,
+    STRIKER_FRICTION,
+    difficultySelector,
+    PUCK_PLAYER_COLLISION_COOLDOWN
+} from "./global.js";
 import {clamp} from "./util.js";
 
 export default class Player {
@@ -182,26 +198,6 @@ export default class Player {
         const dx = x - this.xPos;
         const dy = y - this.yPos;
 
-        // switch(Math.sign(dx)) {
-        //     case 1: this.xVel = Math.max(0, this.xVel + MAIN_PLAYER_ACCEL);
-        //         break;
-        //
-        //     case -1: this.xVel = Math.min(0, this.xVel - MAIN_PLAYER_ACCEL);
-        //         break;
-        //
-        //     default: this.xVel = 0;
-        // }
-        //
-        // switch(Math.sign(dy)) {
-        //     case 1: this.yVel = Math.max(0, this.yVel + MAIN_PLAYER_ACCEL);
-        //         break;
-        //
-        //     case -1: this.yVel = Math.min(0, this.yVel - MAIN_PLAYER_ACCEL);
-        //         break;
-        //
-        //     default: this.yVel = 0;
-        // }
-
         const multiplier = 0.35;
         this.xVel = multiplier * dx;
         this.yVel = multiplier * dy;
@@ -326,9 +322,6 @@ export default class Player {
             // slow down striker using friction
             this.xVel *= this.#friction;
             this.yVel *= this.#friction;
-
-            // update pos using key controls
-            // this.updatePosUsingKeys();
 
             // update pos using pointing device input
             this.updatePosByAcceleratingTo(state.pointingDevice.x, state.pointingDevice.y);

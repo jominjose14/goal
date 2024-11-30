@@ -1,5 +1,24 @@
 import Player from "./Player.js";
-import {$canvas, $homeMenu, $leftScore, $message, $pauseMenu, $rightScore, $scores, difficultySelector, IS_DEV_MODE, offlineTeamSelector, playersPerTeamSelector, PUCK_PLAYER_COLLISION_COOLDOWN, state, X_BOARD_RINK_FRACTION, Y_BOARD_RINK_FRACTION, Y_GOAL_END_FRACTION, Y_GOAL_START_FRACTION} from "./global.js";
+import {
+    $canvas,
+    $homeMenu,
+    $leftScore,
+    $message,
+    $pauseMenu,
+    $rightScore,
+    $scores,
+    difficultySelector,
+    IS_DEV_MODE,
+    OFFLINE_FPS,
+    offlineTeamSelector,
+    playersPerTeamSelector,
+    PUCK_PLAYER_COLLISION_COOLDOWN,
+    state,
+    X_BOARD_RINK_FRACTION,
+    Y_BOARD_RINK_FRACTION,
+    Y_GOAL_END_FRACTION,
+    Y_GOAL_START_FRACTION
+} from "./global.js";
 import {closeModal, drawTextAtCanvasCenter, hide, hideAllMenus, incrementScore, show, showToast} from "./util.js";
 import {resetPostDisconnect, sendRemoteState} from "./online.js";
 import {onPauseUsingDoubleClick, onPauseUsingKeyPress} from "./handlers.js";
@@ -32,7 +51,9 @@ function loop() {
         } else {
             // render frame
             state.puck.update();
-            for (const player of state.players) player.update();
+            for (const player of state.players) {
+                player.update();
+            }
         }
 
         // send state to server
@@ -45,8 +66,8 @@ function loop() {
     } // else, skip frame
 
     // activities performed at frequency higher than fps
-    if(!state.isGoal) updateStuckPuckMetrics();
     handleCollisions();
+    if(!state.isGoal) updateStuckPuckMetrics();
 
     shouldLoop = !state.isGameOver && (state.isOnlineGame || !state.isPaused);
     if(shouldLoop) requestAnimationFrame(loop);
@@ -102,7 +123,7 @@ function logForDebug() {
 export function startOfflineGame() {
     state.isOnlineGame = false;
     state.isPaused = false;
-    state.fps = 60;
+    state.fps = OFFLINE_FPS;
 
     hideAllMenus();
     show($canvas);
@@ -257,9 +278,6 @@ export function handlePuckPlayerCollisions() {
         if(!isColliding || mustSkipCollision) continue;
         // if(!isColliding) continue;
 
-        // play sound
-        // if(!mustSkipCollision) playSound("playerHit", false);
-
         didPlayerCollisionOccur = true;
         player.prevCollisionTimestamp = window.performance.now();
 
@@ -273,6 +291,9 @@ export function handlePuckPlayerCollisions() {
         // teleport puck out of collision range
         state.puck.xPos = player.xPos + dx * radiiSum/distance;
         state.puck.yPos = player.yPos + dy * radiiSum/distance;
+
+        player.xPos += player.xVel;
+        player.yPos += player.yVel;
     }
 
     if(didPlayerCollisionOccur) {
@@ -369,7 +390,7 @@ export function exitGame() {
 
     // reset
     state.isGameOver = true;
-    state.fps = 60;
+    state.fps = OFFLINE_FPS;
     state.players = [state.mainPlayer];
 
     state.mainPlayer.name = "You";

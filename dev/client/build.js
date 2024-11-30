@@ -65,17 +65,24 @@ async function processMedia() {
     console.log(`[INFO] Copied ${mp3Files.length} audio files`);
 
     // Copy SVG files
-    const svgFiles = await glob('images/*.svg', {cwd: srcDir, absolute: true});
+    // const svgFiles = await glob('images/*.svg', {cwd: srcDir, absolute: true});
+    //
+    // for (const file of svgFiles) {
+    //     const fileName = file.split(fileSeparator).pop();
+    //     await fs.copyFile(
+    //         resolve(srcDir, file),
+    //         resolve(publicDir, 'images', fileName)
+    //     );
+    // }
+    //
+    // console.log(`[INFO] Copied ${svgFiles.length} image files`);
 
-    for (const file of svgFiles) {
-        const fileName = file.split(fileSeparator).pop();
-        await fs.copyFile(
-            resolve(srcDir, file),
-            resolve(publicDir, 'images', fileName)
-        );
-    }
+    // Copy images
+    await fs.copyFile(resolve(srcDir, 'images/favicon.svg'), resolve(publicDir, 'images/favicon.svg'));
+    await fs.copyFile(resolve(srcDir, 'images/board.svg'), resolve(publicDir, 'images/board.svg'));
+    await fs.copyFile(resolve(srcDir, 'images/cursor.svg'), resolve(publicDir, 'images/cursor.svg'));
+    console.log(`[INFO] Copied image files`);
 
-    console.log(`[INFO] Copied ${svgFiles.length} image files`);
     console.log('[INFO] Media processing complete');
 }
 

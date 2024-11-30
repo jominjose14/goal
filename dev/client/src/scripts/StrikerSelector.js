@@ -1,11 +1,22 @@
-import {MAX_USERS_PER_ROOM, strikerImgUrls} from "./global.js";
+import {MAX_USERS_PER_ROOM} from "./global.js";
 
 export class StrikerSelector {
     #cssSelector;
-    #$domNodes;
+    $domNodes;
     #validValues;
-    #selectableValues;
-    #currIdx;
+    selectableValues;
+    currIdx;
+
+    static onClick(strikerSelector) {
+        strikerSelector.currIdx = (strikerSelector.currIdx + 1) % strikerSelector.selectableValues.length;
+
+        for(const $node of strikerSelector.$domNodes) {
+            const className = `striker${strikerSelector.selectableValues[strikerSelector.currIdx]}`;
+            const circle = $node.querySelector("circle");
+            circle.classList.remove(circle.classList.item(0));
+            circle.classList.add(className);
+        }
+    }
 
     constructor(cssSelector, initialIdx) {
         if(!cssSelector || typeof cssSelector !== "string") {
@@ -18,31 +29,22 @@ export class StrikerSelector {
         }
 
         this.#cssSelector = cssSelector;
-        this.#$domNodes = document.querySelectorAll(cssSelector);
+        this.$domNodes = document.querySelectorAll(cssSelector);
         const values = [];
         for(let i=0; i<MAX_USERS_PER_ROOM; i++) {
             values[i] = i;
         }
         this.#validValues = values;
-        this.#selectableValues = values;
-        this.#currIdx = initialIdx;
+        this.selectableValues = values;
+        this.currIdx = initialIdx;
 
-        for(const $node of this.#$domNodes) {
+        for(const $node of this.$domNodes) {
             $node.onclick = () => StrikerSelector.onClick(this);
         }
     }
 
-    static onClick(strikerSelector) {
-        strikerSelector.#currIdx = (strikerSelector.#currIdx + 1) % strikerSelector.#selectableValues.length;
-
-        for(const $node of strikerSelector.#$domNodes) {
-            const $img = $node.querySelector("img");
-            $img.src = strikerImgUrls[strikerSelector.#selectableValues[strikerSelector.#currIdx]];
-        }
-    }
-
     getValue() {
-        return this.#selectableValues[this.#currIdx];
+        return this.selectableValues[this.currIdx];
     }
 
     updateSelectableValues(values) {
@@ -58,10 +60,12 @@ export class StrikerSelector {
             }
         }
 
-        this.#selectableValues = values;
-        for(const $node of this.#$domNodes) {
-            const $img = $node.querySelector("img");
-            $img.src = strikerImgUrls[this.#selectableValues[0]];
+        this.selectableValues = values;
+        for(const $node of this.$domNodes) {
+            const className = `striker${this.selectableValues[0]}`;
+            const circle = $node.querySelector("circle");
+            circle.classList.remove(circle.classList.item(0));
+            circle.classList.add(className);
         }
     }
 }

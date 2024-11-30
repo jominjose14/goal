@@ -12,15 +12,17 @@ export const MAX_USERNAME_LENGTH = 10;
 export const MAX_ROOM_NAME_LENGTH = 10;
 export const MAX_USERS_PER_ROOM = 4;
 export const MAX_USERS_PER_TEAM = 2;
+export const TRUNCATE_FLOAT_PRECISION = 3;
+export const TRUNCATE_FLOAT_FACTOR = Math.pow(10, TRUNCATE_FLOAT_PRECISION);
+export const ONLINE_FPS = 60;
 export const webSocketChannels = ["handshake", "memberLeft", "reassignHost", "state"];
 export const WEBSOCKET_SERVER_TIMEOUT = 60_000; // measured in milliseconds
 export const WEBSOCKET_CLIENT_TIMEOUT = 60_000; // measured in milliseconds
-export const TRUNCATE_FLOAT_PRECISION = 3;
-export const TRUNCATE_FLOAT_FACTOR = Math.pow(10, TRUNCATE_FLOAT_PRECISION);
 export const webSocketErrors = {
-    serverInactivity: { code: 3001, reason: "Server inactivity timeout" },
-    wrongChannel: { code: 3002, reason: "Wrong channel" },
-    rejectedUsername: { code: 3003, reason: "Username rejected by server" },
+    clientError: { code: 3001, reason: "Client-side error" },
+    serverInactivity: { code: 3002, reason: "Server inactivity timeout" },
+    wrongChannel: { code: 3003, reason: "Wrong channel" },
+    rejectedUsername: { code: 3004, reason: "Username rejected by server" },
 };
 
 // DOM elements
@@ -56,11 +58,12 @@ export const PLAYER_RADIUS_FRACTION = 0.0225 // TODO: make this ratio editable i
 export const PUCK_COLOR = "hsla(0, 0%, 100%, 1)";
 
 // config
+export const OFFLINE_FPS = 60;
 export const PUCK_MIN_SPEED = 1; // measured in px/frame
 export const PUCK_FRICTION = 0.999; // fraction of speed retained after deceleration caused by friction
 export const STRIKER_FRICTION = 0.999; // fraction of speed retained after deceleration caused by friction
 export const STUCK_PUCK_MAX_DURATION = 10; // measured in seconds
-export const PUCK_PLAYER_COLLISION_COOLDOWN = 200; // measured in milliseconds
+export const PUCK_PLAYER_COLLISION_COOLDOWN = 150; // measured in milliseconds
 export const TOAST_DURATION = 3000; // measured in milliseconds
 export const INITIAL_MASTER_GAIN = 1;
 export const INITIAL_MUSIC_GAIN = 0.9;
@@ -73,12 +76,6 @@ export const validDifficulties = ["easy", "medium", "hard"];
 export const validPlayersPerTeam = ["one", "two"];
 export const validPlayerTypes = ["human", "ai", "remote"];
 export const selectablePlayerTypes = ["human", "ai"];
-export const strikerImgUrls = [
-    "images/striker-0.svg",
-    "images/striker-1.svg",
-    "images/striker-2.svg",
-    "images/striker-3.svg",
-]; // TODO: extend to work when 4 < MAX_USERS_PER_ROOM
 export const strikers = [
     {
         name: "G",

@@ -83,16 +83,6 @@ export default class Puck {
         this.yVel = 0;
     }
 
-    draw() {
-        const ctx = state.context;
-
-        ctx.beginPath();
-        ctx.arc(this.#xPos, this.#yPos, this.#radius, 0, 2 * Math.PI, false);
-        ctx.fillStyle = this.#color;
-        ctx.fill();
-        ctx.closePath();
-    }
-
     update() {
         // update puck only if it is (an offline game) OR (if it is an online game, provided mainPlayer is the host)
         // Reason: if mainPlayer is not host, puck must be updated using remote state received via web socket connection
@@ -112,5 +102,15 @@ export default class Puck {
         }
 
         this.draw();
+    }
+
+    draw() {
+        const ctx = state.context;
+
+        ctx.beginPath();
+        ctx.arc(this.#xPos, this.#yPos, this.#radius, 0, 2 * Math.PI, false);
+        ctx.fillStyle = this.#color;
+        ctx.fill();
+        ctx.closePath();
     }
 }

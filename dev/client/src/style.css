@@ -121,14 +121,8 @@ body {
         display: grid;
         place-items: center;
         padding: 0.25em 0.1em;
-        /*background-color: transparent;*/
-        /*border: none;*/
 
-        /*&:hover {*/
-        /*    background-color: transparent;*/
-        /*}*/
-
-        img {
+        svg {
             height: 6dvh;
             width: 6dvh;
         }
@@ -139,6 +133,22 @@ body {
         width: 11dvw;
         accent-color: hsla(0, 0%, 85%, 1);
     }
+}
+
+.striker0 {
+    fill: aqua;
+}
+
+.striker1 {
+    fill: lime;
+}
+
+.striker2 {
+    fill: #ffe100;
+}
+
+.striker3 {
+    fill: #ff9500;
 }
 
 .home {
@@ -181,10 +191,10 @@ body {
         border-radius: 0.45em;
         border: 1px solid hsla(0, 0%, 100%, 0.1);
 
-        img {
+        svg {
             height: 70%;
             width: 70%;
-            filter: invert(1);
+            /*filter: invert(1);*/
         }
 
         &:hover {
@@ -411,10 +421,10 @@ body {
         background-color: hsla(0, 0%, 0%, 1);
     }
 
-    img {
+    svg {
         height: 40vmin;
         width: 40vmin;
-        filter: invert(1);
+        /*filter: invert(1);*/
         margin-bottom: 7vmin;
     }
 }
@@ -424,13 +434,20 @@ body {
     border: none;
 
     &::backdrop {
-        background-color: hsla(0, 0%, 0%, 0.5);
+        background-color: hsla(0, 0%, 0%);
+        opacity: 0.5;
     }
 
-    img {
+    svg {
         height: 10vmin;
         width: 10vmin;
         filter: invert(1);
+    }
+}
+
+.opaque-loading-spinner {
+    &::backdrop {
+        opacity: 1;
     }
 }
 
