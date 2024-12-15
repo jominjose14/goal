@@ -28,7 +28,8 @@ export function connectUsingUserName() {
             return;
         }
 
-        state.webSocketConn = new WebSocket(`ws://${domain}/user`);
+        const protocol = IS_DEV_MODE ? "ws" : "wss";
+        state.webSocketConn = new WebSocket(`${protocol}://${domain}/user`);
 
         state.webSocketConn.onopen = () => {
             if (IS_DEV_MODE) console.log("Web socket connection established");
