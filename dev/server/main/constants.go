@@ -25,6 +25,6 @@ const (
 	// memory limiting
 	maxPayloadSize       = 1024                  // max allowed payload size = 1024 bytes = 1 KB
 	memoryUsedPerRequest = 500.0 / 1_000_000_000 // measured in Gibibytes
-	memPerDay            = 50                    // measured in Gibibytes
-	memPerMonth          = 1000                  // measured in Gibibytes
+	memPerDay            = 7                     // measured in Gibibytes
+	memPerMonth          = 100                   // measured in Gibibytes
 )
