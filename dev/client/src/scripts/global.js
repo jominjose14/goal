@@ -3,7 +3,7 @@ import {TextSelector} from "./TextSelector.js";
 import {StrikerSelector} from "./StrikerSelector.js";
 
 // == Constants ==
-export const IS_DEV_MODE = true;
+export const IS_DEV_MODE = false;
 export const IS_HANDHELD_DEVICE = isHandheldDevice();
 
 // online

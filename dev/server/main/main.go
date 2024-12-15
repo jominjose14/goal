@@ -42,7 +42,11 @@ func main() {
 	http.HandleFunc("POST /join", middlewareChain(joinRoomHandler))
 
 	// serve
-	port := 8080
-	log.Println("[INFO] starting server at port", port)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		log.Printf("[INFO] could not find environment variable PORT, so defaulting to port %v\n", port)
+	}
+	log.Println("[INFO] starting server on port", port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", port), nil))
 }

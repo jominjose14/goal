@@ -39,12 +39,12 @@ function main() {
 }
 
 function debugOps() {
-    show($fpsDisplay);
-
-    setInterval(() => {
-        $fpsDisplay.textContent = state.fpsMetrics.canvasFpsCounter.toString();
-        state.fpsMetrics.canvasFpsCounter = 0;
-    }, 1000);
+    // show($fpsDisplay);
+    //
+    // setInterval(() => {
+    //     $fpsDisplay.textContent = state.fpsMetrics.canvasFpsCounter.toString();
+    //     state.fpsMetrics.canvasFpsCounter = 0;
+    // }, 1000);
 }
 
 function initializeParameters() {
