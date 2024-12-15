@@ -2,6 +2,8 @@
 
 An air-hockey game web app
 
+[Click here to play](https://goal-pb1a.onrender.com/)
+
 ### Features:
 - Offline mode against AIs (3 difficulties: Easy, Medium, Hard)
 - Online multiplayer (upto 4 players on the same board)
