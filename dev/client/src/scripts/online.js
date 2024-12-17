@@ -1,4 +1,4 @@
-import {$canvas, $createRoomMenu, $joinRoomMenu, $leftScore, $message, $onlineMenu, $rightScore, $scores, domain, IS_DEV_MODE, MAX_ROOM_NAME_LENGTH, MAX_USERNAME_LENGTH, MAX_USERS_PER_ROOM, ONLINE_FPS, state, WEBSOCKET_CLIENT_TIMEOUT, webSocketErrors} from "./global.js";
+import {$canvas, $createRoomMenu, $joinRoomMenu, $leftScore, $message, $onlineMenu, $rightScore, $scores, domain, IS_DEV_MODE, IS_PROD, MAX_ROOM_NAME_LENGTH, MAX_USERNAME_LENGTH, MAX_USERS_PER_ROOM, ONLINE_FPS, state, WEBSOCKET_CLIENT_TIMEOUT, webSocketErrors} from "./global.js";
 import {capitalizeFirstLetter, hideAllMenus, getSignificantFloatDigits, safeExtractScore, setScore, show, showToast, retrieveFloatFromSignificantDigits} from "./util.js";
 import {onClickJoinableRoom, onPauseUsingDoubleClick, onPauseUsingKeyPress} from "./handlers.js";
 import Player from "./Player.js";
@@ -28,7 +28,7 @@ export function connectUsingUserName() {
             return;
         }
 
-        const protocol = IS_DEV_MODE ? "ws" : "wss";
+        const protocol = IS_PROD ? "wss" : "ws";
         state.webSocketConn = new WebSocket(`${protocol}://${domain}/user`);
 
         state.webSocketConn.onopen = () => {
@@ -192,7 +192,7 @@ export function startOnlineGame(team, strikerIdx, playerType) {
 
 export async function createRoom(roomName, team, strikerIdx, playerType) {
     const $errorMsg = $createRoomMenu.querySelector(".error-msg");
-    const protocol = IS_DEV_MODE ? "http" : "https";
+    const protocol = IS_PROD ? "https" : "http";
     let response = null;
 
     if (roomName === "") {
@@ -235,7 +235,7 @@ export async function createRoom(roomName, team, strikerIdx, playerType) {
 
 export async function getRoomList() {
     const $errorMsg = $joinRoomMenu.querySelector(".error-msg");
-    const protocol = IS_DEV_MODE ? "http" : "https";
+    const protocol = IS_PROD ? "https" : "http";
     let response = null;
 
     try {
@@ -295,7 +295,7 @@ export async function getRoomList() {
 export async function joinRoom(roomName, team, strikerIdx, playerType) {
     const $errorMsg = $joinRoomMenu.querySelector(".error-msg");
     $errorMsg.textContent = "";
-    const protocol = IS_DEV_MODE ? "http" : "https";
+    const protocol = IS_PROD ? "https" : "http";
     let response = null;
 
     try {

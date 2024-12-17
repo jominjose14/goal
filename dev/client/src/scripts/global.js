@@ -7,7 +7,9 @@ export const IS_DEV_MODE = false;
 export const IS_HANDHELD_DEVICE = isHandheldDevice();
 
 // online
-export const domain = (new URL(window.location.href)).host;
+export const urlObj = new URL(window.location.href);
+export const domain = urlObj.host;
+export const IS_PROD = urlObj.protocol === "https:";
 export const MAX_USERNAME_LENGTH = 10;
 export const MAX_ROOM_NAME_LENGTH = 10;
 export const MAX_USERS_PER_ROOM = 4;
